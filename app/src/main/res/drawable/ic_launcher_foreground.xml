@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Center Glow (behind crystals) -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M54,54 m-25,0 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0"/>
+
+    <!-- Left Crystal (Purple/Amethyst) -->
+    <path
+        android:fillColor="#7B1FA2"
+        android:pathData="M46,80 L28,50 L40,35 L52,70 Z"/>
+    <path
+        android:fillColor="#BA68C8"
+        android:pathData="M28,50 L35,45 L40,35 Z"/>
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M28,50 L40,35 L48,58 Z"/>
+
+    <!-- Right Crystal (Orange/Topaz) -->
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M62,80 L80,50 L68,35 L56,70 Z"/>
+    <path
+        android:fillColor="#FF8A65"
+        android:pathData="M80,50 L73,45 L68,35 Z"/>
+    <path
+        android:fillColor="#F57C00"
+        android:pathData="M80,50 L68,35 L60,58 Z"/>
+
+    <!-- Center Crystal (Cyan/Diamond) -->
+    <!-- Main body -->
+    <path
+        android:fillColor="#0288D1"
+        android:pathData="M54,85 L35,55 L54,22 L73,55 Z"/>
+    <!-- Left Face Highlight -->
+    <path
+        android:fillColor="#29B6F6"
+        android:pathData="M54,22 L35,55 L54,55 Z"/>
+    <!-- Right Face Highlight -->
+    <path
+        android:fillColor="#4FC3F7"
+        android:pathData="M54,22 L73,55 L54,55 Z"/>
+    <!-- Top Sparkle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,18 L56,22 L54,26 L52,22 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M25,45 L27,48 L25,51 L23,48 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M83,45 L85,48 L83,51 L81,48 Z"/>
+
+</vector>

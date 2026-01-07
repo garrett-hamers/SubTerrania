@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Deep Cave Background -->
+    <path
+        android:fillColor="#121212"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
+        
+    <!-- Subtle circular gradient simulation using opacity layers -->
+    <!-- Outer darker ring is the base color #121212 -->
+    <!-- Middle ring -->
+    <path
+        android:fillColor="#1F1F2E"
+        android:pathData="M54,54 m-50,0 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0"/>
+    <!-- Inner ring -->
+    <path
+        android:fillColor="#2D2D44"
+        android:pathData="M54,54 m-35,0 a35,35 0 1,0 70,0 a35,35 0 1,0 -70,0"/>
+        
+    <!-- Rock floor texture at bottom -->
+    <path
+        android:fillColor="#1A1A24"
+        android:pathData="M0,80 Q25,70 54,75 Q85,80 108,70 L108,108 L0,108 Z"/>
+</vector>
