@@ -24,3 +24,14 @@ local.properties
 
 # Captures
 captures/
+
+# Release artifacts
+*.apk
+*.aab
+app/release/
+
+# Signing
+keystore/
+*.keystore
+*.jks
+signing.properties
