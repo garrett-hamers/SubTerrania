@@ -5,55 +5,110 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Center Glow (behind crystals) -->
+    <!-- Outer glow ring -->
     <path
-        android:fillColor="#33FFFFFF"
-        android:pathData="M54,54 m-25,0 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0"/>
+        android:fillColor="#2200BCD4"
+        android:pathData="M54,14 C30,14 14,30 14,54 C14,78 30,94 54,94 C78,94 94,78 94,54 C94,30 78,14 54,14 Z"/>
+    
+    <!-- Inner glow -->
+    <path
+        android:fillColor="#3300ACC1"
+        android:pathData="M54,20 C34,20 20,34 20,54 C20,74 34,88 54,88 C74,88 88,74 88,54 C88,34 74,20 54,20 Z"/>
 
-    <!-- Left Crystal (Purple/Amethyst) -->
+    <!-- Left Crystal (Purple/Amethyst) - Enhanced -->
     <path
-        android:fillColor="#7B1FA2"
-        android:pathData="M46,80 L28,50 L40,35 L52,70 Z"/>
+        android:fillColor="#6A1B9A"
+        android:pathData="M44,82 L24,52 L38,32 L52,72 Z"/>
     <path
-        android:fillColor="#BA68C8"
-        android:pathData="M28,50 L35,45 L40,35 Z"/>
+        android:fillColor="#8E24AA"
+        android:pathData="M24,52 L38,32 L46,58 Z"/>
     <path
-        android:fillColor="#9C27B0"
-        android:pathData="M28,50 L40,35 L48,58 Z"/>
+        android:fillColor="#AB47BC"
+        android:pathData="M24,52 L32,46 L38,32 Z"/>
+    <path
+        android:fillColor="#CE93D8"
+        android:pathData="M30,48 L34,42 L36,46 Z"/>
+    <!-- Purple glow -->
+    <path
+        android:fillColor="#229C27B0"
+        android:pathData="M38,32 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"/>
 
-    <!-- Right Crystal (Orange/Topaz) -->
+    <!-- Right Crystal (Orange/Topaz) - Enhanced -->
+    <path
+        android:fillColor="#D84315"
+        android:pathData="M64,82 L84,52 L70,32 L56,72 Z"/>
     <path
         android:fillColor="#E64A19"
-        android:pathData="M62,80 L80,50 L68,35 L56,70 Z"/>
+        android:pathData="M84,52 L70,32 L62,58 Z"/>
     <path
-        android:fillColor="#FF8A65"
-        android:pathData="M80,50 L73,45 L68,35 Z"/>
+        android:fillColor="#FF7043"
+        android:pathData="M84,52 L76,46 L70,32 Z"/>
     <path
-        android:fillColor="#F57C00"
-        android:pathData="M80,50 L68,35 L60,58 Z"/>
+        android:fillColor="#FFAB91"
+        android:pathData="M78,48 L74,42 L72,46 Z"/>
+    <!-- Orange glow -->
+    <path
+        android:fillColor="#22FF5722"
+        android:pathData="M70,32 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0"/>
 
-    <!-- Center Crystal (Cyan/Diamond) -->
-    <!-- Main body -->
+    <!-- Center Crystal (Cyan/Diamond) - Main focal point -->
+    <!-- Back shadow -->
     <path
-        android:fillColor="#0288D1"
-        android:pathData="M54,85 L35,55 L54,22 L73,55 Z"/>
-    <!-- Left Face Highlight -->
+        android:fillColor="#00838F"
+        android:pathData="M54,88 L32,56 L54,18 L76,56 Z"/>
+    <!-- Main body left -->
     <path
-        android:fillColor="#29B6F6"
-        android:pathData="M54,22 L35,55 L54,55 Z"/>
-    <!-- Right Face Highlight -->
+        android:fillColor="#00ACC1"
+        android:pathData="M54,18 L32,56 L54,56 Z"/>
+    <!-- Main body right -->
     <path
-        android:fillColor="#4FC3F7"
-        android:pathData="M54,22 L73,55 L54,55 Z"/>
-    <!-- Top Sparkle -->
+        android:fillColor="#26C6DA"
+        android:pathData="M54,18 L76,56 L54,56 Z"/>
+    <!-- Bottom left -->
+    <path
+        android:fillColor="#0097A7"
+        android:pathData="M32,56 L54,88 L54,56 Z"/>
+    <!-- Bottom right -->
+    <path
+        android:fillColor="#00ACC1"
+        android:pathData="M76,56 L54,88 L54,56 Z"/>
+    <!-- Inner light -->
+    <path
+        android:fillColor="#4DD0E1"
+        android:pathData="M50,28 L54,22 L54,48 L46,40 Z"/>
+    <!-- Bright core -->
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M52,26 L54,22 L54,36 L50,32 Z"/>
+    
+    <!-- Top sparkle (main) -->
+    <path
+        android:fillColor="#E0F7FA"
+        android:pathData="M54,14 L56,18 L54,22 L52,18 Z"/>
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,18 L56,22 L54,26 L52,22 Z"/>
+        android:pathData="M54,15 L55,18 L54,21 L53,18 Z"/>
+    
+    <!-- Side sparkles -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M25,45 L27,48 L25,51 L23,48 Z"/>
+        android:fillColor="#E0F7FA"
+        android:pathData="M28,48 L30,51 L28,54 L26,51 Z"/>
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M83,45 L85,48 L83,51 L81,48 Z"/>
+        android:fillColor="#E0F7FA"
+        android:pathData="M80,48 L82,51 L80,54 L78,51 Z"/>
+    
+    <!-- Floating particles -->
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M40,24 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0"/>
+    <path
+        android:fillColor="#B2EBF2"
+        android:pathData="M68,24 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M22,62 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+    <path
+        android:fillColor="#B2EBF2"
+        android:pathData="M86,62 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
 
 </vector>

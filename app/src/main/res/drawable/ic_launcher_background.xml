@@ -5,24 +5,52 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Deep Cave Background -->
+    <!-- Deep cave background -->
     <path
-        android:fillColor="#121212"
-        android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
-        
-    <!-- Subtle circular gradient simulation using opacity layers -->
-    <!-- Outer darker ring is the base color #121212 -->
-    <!-- Middle ring -->
+        android:fillColor="#0D0D1A"
+        android:pathData="M0,0h108v108h-108z"/>
+    
+    <!-- Subtle cave texture/depth layers -->
+    <path
+        android:fillColor="#121220"
+        android:pathData="M0,80 Q27,70 54,76 Q81,70 108,80 L108,108 L0,108 Z"/>
+    <path
+        android:fillColor="#16162A"
+        android:pathData="M0,70 Q36,60 54,66 Q72,60 108,70 L108,90 Q72,80 54,86 Q36,80 0,90 Z"/>
+    <path
+        android:fillColor="#1A1A32"
+        android:pathData="M0,58 Q28,50 54,56 Q80,50 108,58 L108,75 Q80,65 54,72 Q28,65 0,75 Z"/>
+    
+    <!-- Middle gradient ring -->
     <path
         android:fillColor="#1F1F2E"
         android:pathData="M54,54 m-50,0 a50,50 0 1,0 100,0 a50,50 0 1,0 -100,0"/>
-    <!-- Inner ring -->
+    
+    <!-- Inner gradient ring -->
     <path
         android:fillColor="#2D2D44"
         android:pathData="M54,54 m-35,0 a35,35 0 1,0 70,0 a35,35 0 1,0 -70,0"/>
-        
-    <!-- Rock floor texture at bottom -->
+    
+    <!-- Top gradient fade -->
     <path
-        android:fillColor="#1A1A24"
-        android:pathData="M0,80 Q25,70 54,75 Q85,80 108,70 L108,108 L0,108 Z"/>
+        android:fillColor="#0A0A14"
+        android:pathData="M0,0 L108,0 L108,30 Q54,35 0,30 Z"/>
+    
+    <!-- Ambient particles -->
+    <path
+        android:fillColor="#222240"
+        android:pathData="M20,30 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0"/>
+    <path
+        android:fillColor="#252550"
+        android:pathData="M85,45 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+    <path
+        android:fillColor="#222240"
+        android:pathData="M15,65 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#252550"
+        android:pathData="M90,85 m-1.5,0 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0"/>
+    <path
+        android:fillColor="#1E1E3A"
+        android:pathData="M50,95 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    
 </vector>

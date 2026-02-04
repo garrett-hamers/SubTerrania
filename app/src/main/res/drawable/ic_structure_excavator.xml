@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    
+    <!-- Impact glow -->
+    <path
+        android:fillColor="#22FF9800"
+        android:pathData="M20,26 m-8,0 a8,6 0 1,0 16,0 a8,6 0 1,0 -16,0"/>
+    
+    <!-- Pickaxe handle -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M6,28 L18,8 L20,10 L8,30 Z"/>
+    
+    <!-- Handle wood grain -->
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M8,26 L16,12 L17,13 L9,27 Z"/>
+    
+    <!-- Pickaxe head (left spike) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M14,12 L18,8 L6,4 L4,6 Z"/>
+    
+    <!-- Pickaxe head (right spike) -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M18,8 L22,12 L28,2 L26,0 Z"/>
+    
+    <!-- Metal head center -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M14,12 L18,8 L22,12 L18,14 Z"/>
+    
+    <!-- Metal highlights -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M8,6 L14,10 L12,12 L6,8 Z"/>
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M24,4 L20,10 L22,10 L26,4 Z"/>
+    
+    <!-- Edge shine -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M5,5 L6,4 L14,10 L13,11 Z"/>
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M27,1 L28,2 L22,10 L21,9 Z"/>
+    
+    <!-- Binding -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M16,10 L20,14 L18,16 L14,12 Z"/>
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M15,11 L19,15 L18,16 L14,12 Z"/>
+    
+    <!-- Sparks -->
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M24,20 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#FFECB3"
+        android:pathData="M28,16 m-0.6,0 a0.6,0.6 0 1,0 1.2,0 a0.6,0.6 0 1,0 -1.2,0"/>
+    <path
+        android:fillColor="#FFE082"
+        android:pathData="M22,24 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+
+</vector>

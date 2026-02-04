@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- Ground/cave floor -->
+    <path
+        android:fillColor="#33691E"
+        android:pathData="M4,36 Q24,32 44,36 L44,44 L4,44 Z"/>
+    
+    <!-- Beetle glow (subtle) -->
+    <path
+        android:fillColor="#224CAF50"
+        android:pathData="M24,20 m-14,0 a14,10 0 1,0 28,0 a14,10 0 1,0 -28,0"/>
+    
+    <!-- Large beetle (center) -->
+    <!-- Body -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M24,32 C16,32 12,26 12,22 C12,16 18,12 24,12 C30,12 36,16 36,22 C36,26 32,32 24,32 Z"/>
+    <!-- Shell segments -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M24,12 C18,12 12,16 12,22 L24,22 L36,22 C36,16 30,12 24,12 Z"/>
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M14,22 L24,22 L24,28 C18,28 14,26 14,22 Z"/>
+    <path
+        android:fillColor="#43A047"
+        android:pathData="M34,22 L24,22 L24,28 C30,28 34,26 34,22 Z"/>
+    <!-- Center line -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M23.5,12 L23.5,32 L24.5,32 L24.5,12 Z"/>
+    <!-- Head -->
+    <path
+        android:fillColor="#2E7D32"
+        android:pathData="M24,12 C21,12 19,10 19,8 C19,6 21,5 24,5 C27,5 29,6 29,8 C29,10 27,12 24,12 Z"/>
+    <!-- Eyes -->
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M21,7 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M27,7 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <!-- Antennae -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M21,6 Q18,4 16,2"
+        android:strokeWidth="1"
+        android:strokeColor="#1B5E20"/>
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M27,6 Q30,4 32,2"
+        android:strokeWidth="1"
+        android:strokeColor="#1B5E20"/>
+    <!-- Legs -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M14,20 Q10,22 8,26"
+        android:strokeWidth="1.5"
+        android:strokeColor="#1B5E20"/>
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M13,24 Q9,26 6,32"
+        android:strokeWidth="1.5"
+        android:strokeColor="#1B5E20"/>
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M34,20 Q38,22 40,26"
+        android:strokeWidth="1.5"
+        android:strokeColor="#1B5E20"/>
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M35,24 Q39,26 42,32"
+        android:strokeWidth="1.5"
+        android:strokeColor="#1B5E20"/>
+    <!-- Shell highlight -->
+    <path
+        android:fillColor="#66BB6A"
+        android:pathData="M18,16 Q20,14 24,14 Q23,18 19,19 Z"/>
+    
+    <!-- Small beetle (left) -->
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M10,40 C8,40 6,38 6,36 C6,34 8,33 10,33 C12,33 14,34 14,36 C14,38 12,40 10,40 Z"/>
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M8,35 Q9,34 10,34 Q10,36 9,36 Z"/>
+    
+    <!-- Small beetle (right) -->
+    <path
+        android:fillColor="#388E3C"
+        android:pathData="M38,42 C36,42 34,40 34,38 C34,36 36,35 38,35 C40,35 42,36 42,38 C42,40 40,42 38,42 Z"/>
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M36,37 Q37,36 38,36 Q38,38 37,38 Z"/>
+
+</vector>

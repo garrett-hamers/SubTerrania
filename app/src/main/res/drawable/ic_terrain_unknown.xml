@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- Dark fog background -->
+    <path
+        android:fillColor="#1A1A2E"
+        android:pathData="M4,4 L44,4 L44,44 L4,44 Z"/>
+    
+    <!-- Fog layers -->
+    <path
+        android:fillColor="#222240"
+        android:pathData="M4,36 Q14,30 24,34 Q34,30 44,36 L44,44 L4,44 Z"/>
+    <path
+        android:fillColor="#252550"
+        android:pathData="M4,32 Q16,26 28,30 Q38,26 44,32 L44,40 Q34,34 24,38 Q14,34 4,40 Z"/>
+    <path
+        android:fillColor="#2A2A58"
+        android:pathData="M4,26 Q12,22 22,26 Q32,22 44,26 L44,34 Q32,28 22,32 Q12,28 4,34 Z"/>
+    
+    <!-- Swirling fog wisps -->
+    <path
+        android:fillColor="#333366"
+        android:pathData="M8,20 Q14,16 20,20 Q26,16 32,20 Q26,24 20,20 Q14,24 8,20 Z"/>
+    <path
+        android:fillColor="#3D3D70"
+        android:pathData="M16,14 Q22,10 28,14 Q34,10 40,14 Q34,18 28,14 Q22,18 16,14 Z"/>
+    
+    <!-- Question mark (mystery indicator) -->
+    <!-- Circle part -->
+    <path
+        android:fillColor="#4A4A80"
+        android:pathData="M24,10 C18,10 15,14 15,18 C15,22 18,24 22,24 L22,28 L26,28 L26,22 C30,21 33,18 33,14 C33,10 30,10 24,10 Z"/>
+    <!-- Inner highlight -->
+    <path
+        android:fillColor="#5C5C99"
+        android:pathData="M24,12 C20,12 17,15 17,18 C17,20 19,22 22,22 L22,20 C20,20 19,19 19,18 C19,16 21,14 24,14 C27,14 29,15 29,17 C29,19 27,20 25,20 L25,22 L28,22 C30,21 31,19 31,17 C31,13 28,12 24,12 Z"/>
+    <!-- Dot -->
+    <path
+        android:fillColor="#5C5C99"
+        android:pathData="M24,32 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"/>
+    <path
+        android:fillColor="#7070AA"
+        android:pathData="M23,31 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    
+    <!-- Mysterious floating particles -->
+    <path
+        android:fillColor="#444480"
+        android:pathData="M10,28 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#5555AA"
+        android:pathData="M38,26 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+    <path
+        android:fillColor="#444480"
+        android:pathData="M14,38 m-0.6,0 a0.6,0.6 0 1,0 1.2,0 a0.6,0.6 0 1,0 -1.2,0"/>
+    <path
+        android:fillColor="#5555AA"
+        android:pathData="M36,40 m-0.7,0 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0"/>
+    <path
+        android:fillColor="#3D3D70"
+        android:pathData="M8,16 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    <path
+        android:fillColor="#3D3D70"
+        android:pathData="M40,18 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+
+</vector>

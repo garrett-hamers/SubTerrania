@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    
+    <!-- Glow -->
+    <path
+        android:fillColor="#2200BCD4"
+        android:pathData="M16,2 C8,2 2,8 2,16 C2,24 8,30 16,30 C24,30 30,24 30,16 C30,8 24,2 16,2 Z"/>
+    
+    <!-- Inner glow -->
+    <path
+        android:fillColor="#3300ACC1"
+        android:pathData="M16,4 C10,4 5,9 5,16 C5,23 10,28 16,28 C22,28 27,23 27,16 C27,9 22,4 16,4 Z"/>
+    
+    <!-- Building base -->
+    <path
+        android:fillColor="#006064"
+        android:pathData="M6,28 L6,12 L26,12 L26,28 Z"/>
+    
+    <!-- Front wall -->
+    <path
+        android:fillColor="#00838F"
+        android:pathData="M6,12 L6,28 L16,28 L16,12 Z"/>
+    
+    <!-- Side wall -->
+    <path
+        android:fillColor="#006064"
+        android:pathData="M16,12 L26,12 L26,28 L16,28 Z"/>
+    
+    <!-- Roof (angular, industrial) -->
+    <path
+        android:fillColor="#004D40"
+        android:pathData="M4,12 L16,6 L28,12 Z"/>
+    
+    <!-- Roof highlight -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M6,11 L16,7 L16,12 Z"/>
+    
+    <!-- Processing window (glowing) -->
+    <path
+        android:fillColor="#26C6DA"
+        android:pathData="M8,16 L8,24 L14,24 L14,16 Z"/>
+    
+    <!-- Crystal being processed (inside) -->
+    <path
+        android:fillColor="#4DD0E1"
+        android:pathData="M11,24 L9,20 L11,16 L13,20 Z"/>
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M11,16 L10,19 L11,19 Z"/>
+    
+    <!-- Output crystal (refined) -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M20,20 L18,24 L20,28 L22,24 Z"/>
+    <path
+        android:fillColor="#26C6DA"
+        android:pathData="M20,20 L19,23 L20,23 Z"/>
+    <path
+        android:fillColor="#4DD0E1"
+        android:pathData="M20,21 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    
+    <!-- Chimney/vent -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M22,10 L22,6 L24,6 L24,12 Z"/>
+    
+    <!-- Energy wisps -->
+    <path
+        android:fillColor="#4480DEEA"
+        android:pathData="M23,6 Q22,4 23,2 Q24,0 25,2 Q26,4 25,5"/>
+    
+    <!-- Sparkles -->
+    <path
+        android:fillColor="#E0F7FA"
+        android:pathData="M11,15 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    <path
+        android:fillColor="#B2EBF2"
+        android:pathData="M20,19 m-0.4,0 a0.4,0.4 0 1,0 0.8,0 a0.4,0.4 0 1,0 -0.8,0"/>
+    <path
+        android:fillColor="#E0F7FA"
+        android:pathData="M24,14 m-0.3,0 a0.3,0.3 0 1,0 0.6,0 a0.3,0.3 0 1,0 -0.6,0"/>
+
+</vector>

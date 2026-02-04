@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    
+    <!-- Glow -->
+    <path
+        android:fillColor="#229C27B0"
+        android:pathData="M16,4 C8,4 4,10 4,18 C4,26 10,30 16,30 C22,30 28,26 28,18 C28,10 24,4 16,4 Z"/>
+    
+    <!-- Building base -->
+    <path
+        android:fillColor="#4A148C"
+        android:pathData="M6,28 L6,14 L26,14 L26,28 Z"/>
+    
+    <!-- Front wall -->
+    <path
+        android:fillColor="#6A1B9A"
+        android:pathData="M6,14 L6,28 L16,28 L16,14 Z"/>
+    
+    <!-- Side wall -->
+    <path
+        android:fillColor="#4A148C"
+        android:pathData="M16,14 L26,14 L26,28 L16,28 Z"/>
+    
+    <!-- Roof with mushroom cap shape -->
+    <path
+        android:fillColor="#7B1FA2"
+        android:pathData="M4,14 Q4,8 16,6 Q28,8 28,14 Z"/>
+    
+    <!-- Roof highlight -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M6,13 Q8,9 16,7 Q16,12 10,13 Z"/>
+    
+    <!-- Bioluminescent spots on roof -->
+    <path
+        android:fillColor="#E1BEE7"
+        android:pathData="M10,10 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#CE93D8"
+        android:pathData="M18,9 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+    <path
+        android:fillColor="#E1BEE7"
+        android:pathData="M24,11 m-0.7,0 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0"/>
+    
+    <!-- Door -->
+    <path
+        android:fillColor="#311B92"
+        android:pathData="M10,18 L10,28 L14,28 L14,18 Q12,17 10,18 Z"/>
+    
+    <!-- Growing beds (visible through window) -->
+    <path
+        android:fillColor="#8E24AA"
+        android:pathData="M18,20 L18,26 L24,26 L24,20 Z"/>
+    
+    <!-- Small mushrooms in bed -->
+    <path
+        android:fillColor="#AB47BC"
+        android:pathData="M19,20 L19,23 L20,23 L20,20 Z"/>
+    <path
+        android:fillColor="#BA68C8"
+        android:pathData="M19.5,20 m-1.5,0 a1.5,1 0 1,0 3,0 a1.5,1 0 1,0 -3,0"/>
+    
+    <path
+        android:fillColor="#AB47BC"
+        android:pathData="M22,20 L22,22 L23,22 L23,20 Z"/>
+    <path
+        android:fillColor="#CE93D8"
+        android:pathData="M22.5,20 m-1.2,0 a1.2,0.8 0 1,0 2.4,0 a1.2,0.8 0 1,0 -2.4,0"/>
+    
+    <!-- Spores floating -->
+    <path
+        android:fillColor="#66E1BEE7"
+        android:pathData="M8,6 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    <path
+        android:fillColor="#88CE93D8"
+        android:pathData="M22,4 m-0.4,0 a0.4,0.4 0 1,0 0.8,0 a0.4,0.4 0 1,0 -0.8,0"/>
+    <path
+        android:fillColor="#66E1BEE7"
+        android:pathData="M14,3 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+
+</vector>

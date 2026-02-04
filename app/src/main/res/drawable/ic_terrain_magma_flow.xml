@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    
+    <!-- Heat glow (outer) -->
+    <path
+        android:fillColor="#33FF5722"
+        android:pathData="M24,2 C8,2 2,12 2,24 C2,38 10,46 24,46 C38,46 46,38 46,24 C46,12 40,2 24,2 Z"/>
+    
+    <!-- Heat glow (inner) -->
+    <path
+        android:fillColor="#44FF9800"
+        android:pathData="M24,6 C12,6 6,14 6,24 C6,36 14,42 24,42 C34,42 42,36 42,24 C42,14 36,6 24,6 Z"/>
+    
+    <!-- Dark rock edges -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M4,44 L4,30 Q12,28 18,32 Q24,28 30,32 Q36,28 44,30 L44,44 Z"/>
+    
+    <!-- Magma flow base -->
+    <path
+        android:fillColor="#BF360C"
+        android:pathData="M8,40 Q14,34 24,36 Q34,34 40,40 L40,44 L8,44 Z"/>
+    
+    <!-- Magma bright layer -->
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M10,42 Q16,36 24,38 Q32,36 38,42 L38,44 L10,44 Z"/>
+    
+    <!-- Magma hot spots -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M14,42 Q18,38 24,40 Q30,38 34,42 L32,44 L16,44 Z"/>
+    
+    <!-- Brightest magma (yellow-orange) -->
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M18,43 Q22,40 26,42 Q28,41 30,43 L28,44 L20,44 Z"/>
+    
+    <!-- White-hot center -->
+    <path
+        android:fillColor="#FFB74D"
+        android:pathData="M22,44 Q24,42 26,44 Z"/>
+    
+    <!-- Upper magma streaks -->
+    <path
+        android:fillColor="#D84315"
+        android:pathData="M6,36 Q10,32 14,34 Q12,38 8,38 Z"/>
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M8,36 Q10,34 12,35 Q11,37 9,37 Z"/>
+    
+    <path
+        android:fillColor="#D84315"
+        android:pathData="M34,34 Q38,32 42,36 Q40,38 36,38 Z"/>
+    <path
+        android:fillColor="#E64A19"
+        android:pathData="M36,35 Q38,34 40,36 Q39,37 37,37 Z"/>
+    
+    <!-- Floating embers/sparks -->
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M12,28 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M20,24 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M28,22 m-0.6,0 a0.6,0.6 0 1,0 1.2,0 a0.6,0.6 0 1,0 -1.2,0"/>
+    <path
+        android:fillColor="#FF9800"
+        android:pathData="M36,26 m-0.7,0 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0"/>
+    <path
+        android:fillColor="#FFE0B2"
+        android:pathData="M16,20 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    <path
+        android:fillColor="#FFCC80"
+        android:pathData="M32,18 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    
+    <!-- Heat distortion lines -->
+    <path
+        android:strokeColor="#44FFCC80"
+        android:strokeWidth="0.8"
+        android:pathData="M14,16 Q18,14 22,16 Q26,14 30,16"/>
+    <path
+        android:strokeColor="#33FFE0B2"
+        android:strokeWidth="0.6"
+        android:pathData="M18,10 Q22,8 26,10 Q30,8 34,10"/>
+
+</vector>

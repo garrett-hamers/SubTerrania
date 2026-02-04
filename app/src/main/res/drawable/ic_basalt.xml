@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Back block -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M14,2 L22,6 L22,14 L14,18 L6,14 L6,6 Z"/>
+    
+    <!-- Back block top face -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M14,2 L22,6 L14,10 L6,6 Z"/>
+    
+    <!-- Back block right face -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M14,10 L22,6 L22,14 L14,18 Z"/>
+    
+    <!-- Front block -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M10,8 L18,12 L18,20 L10,24 L2,20 L2,12 Z"/>
+    
+    <!-- Front block top face -->
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M10,8 L18,12 L10,16 L2,12 Z"/>
+    
+    <!-- Front block right face -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M10,16 L18,12 L18,20 L10,24 Z"/>
+    
+    <!-- Front block left face -->
+    <path
+        android:fillColor="#3E2723"
+        android:pathData="M10,16 L2,12 L2,20 L10,24 Z"/>
+    
+    <!-- Top highlight -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M10,8 L12,9 L10,10 L8,9 Z"/>
+    
+    <!-- Edge highlight -->
+    <path
+        android:fillColor="#A1887F"
+        android:pathData="M10,8 L10.5,8.3 L10.5,9 L10,8.7 Z"/>
+    
+    <!-- Subtle cracks -->
+    <path
+        android:fillColor="#2C1810"
+        android:strokeWidth="0.3"
+        android:pathData="M6,14 L8,16 M12,18 L14,17"/>
+
+</vector>

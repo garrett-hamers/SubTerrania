@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="32dp"
+    android:height="32dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+    
+    <!-- Outer glow -->
+    <path
+        android:fillColor="#44FFEB3B"
+        android:pathData="M16,2 C8,2 2,8 2,16 C2,24 8,30 16,30 C24,30 30,24 30,16 C30,8 24,2 16,2 Z"/>
+    
+    <!-- Inner glow -->
+    <path
+        android:fillColor="#66FFF176"
+        android:pathData="M16,5 C10,5 5,10 5,16 C5,22 10,27 16,27 C22,27 27,22 27,16 C27,10 22,5 16,5 Z"/>
+    
+    <!-- Lantern body -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M12,12 L12,24 L20,24 L20,12 Z"/>
+    
+    <!-- Lantern frame -->
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M11,12 L21,12 L21,14 L11,14 Z"/>
+    <path
+        android:fillColor="#6D4C41"
+        android:pathData="M11,22 L21,22 L21,24 L11,24 Z"/>
+    
+    <!-- Glass panels -->
+    <path
+        android:fillColor="#FFEE58"
+        android:pathData="M13,14 L13,22 L19,22 L19,14 Z"/>
+    
+    <!-- Bright center (flame) -->
+    <path
+        android:fillColor="#FFF9C4"
+        android:pathData="M16,15 C14,15 13,17 14,19 C15,21 17,21 18,19 C19,17 18,15 16,15 Z"/>
+    
+    <!-- Flame highlight -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M16,16 C15,16 14.5,17 15,18 C15.5,18.5 16.5,18.5 17,18 C17.5,17 17,16 16,16 Z"/>
+    
+    <!-- Top hook -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M15,12 L15,8 L17,8 L17,12 Z"/>
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M14,8 C14,6 15,5 16,5 C17,5 18,6 18,8 L17,8 C17,7 16.5,6 16,6 C15.5,6 15,7 15,8 Z"/>
+    
+    <!-- Bottom base -->
+    <path
+        android:fillColor="#4E342E"
+        android:pathData="M10,24 L22,24 L20,27 L12,27 Z"/>
+    
+    <!-- Light rays -->
+    <path
+        android:fillColor="#33FFEB3B"
+        android:pathData="M6,16 L10,17 L10,15 Z"/>
+    <path
+        android:fillColor="#33FFEB3B"
+        android:pathData="M26,16 L22,17 L22,15 Z"/>
+    <path
+        android:fillColor="#33FFEB3B"
+        android:pathData="M16,28 L17,25 L15,25 Z"/>
+
+</vector>

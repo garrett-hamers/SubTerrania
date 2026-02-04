@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Outer glow -->
+    <path
+        android:fillColor="#337B1FA2"
+        android:pathData="M12,2 C6,2 2,8 2,14 C2,20 6,22 12,22 C18,22 22,20 22,14 C22,8 18,2 12,2 Z"/>
+    
+    <!-- Main mushroom cap -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M12,4 C8,4 5,8 5,12 C5,14 7,16 12,16 C17,16 19,14 19,12 C19,8 16,4 12,4 Z"/>
+    
+    <!-- Cap highlight -->
+    <path
+        android:fillColor="#BA68C8"
+        android:pathData="M9,6 C7,8 6,10 7,12 C8,11 9,8 11,6 C10,6 9,6 9,6 Z"/>
+    
+    <!-- Cap spots (bioluminescent) -->
+    <path
+        android:fillColor="#E1BEE7"
+        android:pathData="M8,9 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
+    <path
+        android:fillColor="#E1BEE7"
+        android:pathData="M14,8 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+    <path
+        android:fillColor="#E1BEE7"
+        android:pathData="M11,11 m-0.6,0 a0.6,0.6 0 1,0 1.2,0 a0.6,0.6 0 1,0 -1.2,0"/>
+    <path
+        android:fillColor="#CE93D8"
+        android:pathData="M16,10 m-0.7,0 a0.7,0.7 0 1,0 1.4,0 a0.7,0.7 0 1,0 -1.4,0"/>
+    
+    <!-- Stem -->
+    <path
+        android:fillColor="#7B1FA2"
+        android:pathData="M10,15 L10,21 L14,21 L14,15 C13,15.5 11,15.5 10,15 Z"/>
+    
+    <!-- Stem highlight -->
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M10.5,15 L10.5,20.5 L12,20.5 L12,15 Z"/>
+    
+    <!-- Base glow -->
+    <path
+        android:fillColor="#44CE93D8"
+        android:pathData="M8,20 Q12,23 16,20 L14,21 L10,21 Z"/>
+
+</vector>

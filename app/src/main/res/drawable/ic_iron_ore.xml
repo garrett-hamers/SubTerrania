@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Subtle metallic glow -->
+    <path
+        android:fillColor="#22607D8B"
+        android:pathData="M12,1 C5,1 1,6 1,12 C1,18 6,23 12,23 C19,23 23,18 23,12 C23,6 19,1 12,1 Z"/>
+    
+    <!-- Main ore chunk base -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M4,14 L6,8 L10,5 L16,4 L20,7 L22,12 L20,18 L14,21 L8,20 L4,14 Z"/>
+    
+    <!-- Facet 1 (top-left) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M6,8 L10,5 L12,8 L8,11 Z"/>
+    
+    <!-- Facet 2 (top) -->
+    <path
+        android:fillColor="#607D8B"
+        android:pathData="M10,5 L16,4 L16,8 L12,8 Z"/>
+    
+    <!-- Facet 3 (top-right) -->
+    <path
+        android:fillColor="#78909C"
+        android:pathData="M16,4 L20,7 L18,11 L16,8 Z"/>
+    
+    <!-- Facet 4 (center) -->
+    <path
+        android:fillColor="#455A64"
+        android:pathData="M8,11 L12,8 L16,8 L18,11 L16,15 L10,15 Z"/>
+    
+    <!-- Facet 5 (right) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M18,11 L22,12 L20,18 L16,15 Z"/>
+    
+    <!-- Facet 6 (bottom) -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M10,15 L16,15 L14,21 L8,20 Z"/>
+    
+    <!-- Metallic highlight streaks -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M11,6 L13,6 L12,8 Z"/>
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M17,5 L18,6 L17,8 Z"/>
+    
+    <!-- Iron vein lines -->
+    <path
+        android:fillColor="#263238"
+        android:pathData="M9,10 L11,12 L9,14"
+        android:strokeWidth="0.5"
+        android:strokeColor="#263238"/>
+    <path
+        android:fillColor="#263238"
+        android:pathData="M14,9 L16,12 L15,16"
+        android:strokeWidth="0.5"
+        android:strokeColor="#263238"/>
+    
+    <!-- Sparkle highlights -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M10,5.5 m-0.5,0 a0.5,0.5 0 1,0 1,0 a0.5,0.5 0 1,0 -1,0"/>
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M19,7 m-0.4,0 a0.4,0.4 0 1,0 0.8,0 a0.4,0.4 0 1,0 -0.8,0"/>
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M12,8 m-0.6,0 a0.6,0.6 0 1,0 1.2,0 a0.6,0.6 0 1,0 -1.2,0"/>
+
+</vector>

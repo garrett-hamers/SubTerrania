@@ -29,7 +29,7 @@
 -keep class androidx.compose.animation.** { *; }
 
 # Keep data classes used in game state (for potential serialization)
--keepclassmembers class com.axialgalileo.subterranea.domain.model.** {
+-keepclassmembers class com.atlyn.subterranea.domain.model.** {
     <fields>;
     <init>(...);
 }
