@@ -256,7 +256,7 @@ fun GameScreen(
             TradeMenu(
                 tradableResources = viewModel.getTradableResources(),
                 player = uiState.currentPlayer,
-                tradeRatio = uiState.difficulty.tradeRatio,
+                tradeRatio = if (uiState.discountTradeAvailable) 2 else uiState.difficulty.tradeRatio,
                 onTrade = { give, receive -> viewModel.tradeResources(give, receive) },
                 onDismiss = { viewModel.toggleTradeMenu() },
                 modifier = Modifier.align(Alignment.Center)
@@ -292,10 +292,26 @@ fun GameScreen(
             )
         }
         
+        // Consolation choice popup (non-producing roll)
+        if (uiState.pendingConsolation) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+            )
+            
+            ConsolationChoiceCard(
+                onChoice = { choice -> viewModel.handleConsolationChoice(choice) },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+        
         // Victory screen
+        val metaProg by viewModel.metaProgression.collectAsState()
         if (uiState.gameOver && uiState.winner != null) {
             VictoryScreen(
                 winner = uiState.winner!!,
+                metaProgression = metaProg,
                 onRestart = { viewModel.resetGame() },
                 modifier = Modifier.fillMaxSize()
             )
@@ -306,6 +322,7 @@ fun GameScreen(
         if (showDifficultyMenu) {
             DifficultySelectionScreen(
                 onSelectDifficulty = { difficulty -> viewModel.startGameWithDifficulty(difficulty) },
+                metaProgression = metaProg,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -359,7 +376,7 @@ fun TopHUD(uiState: GameState, modifier: Modifier = Modifier) {
                 fontSize = 18.sp
             )
             Text(
-                text = " ${uiState.currentPlayer.calculateVictoryPoints() + uiState.currentPlayer.victoryPoints}/${uiState.victoryPointsToWin} VP",
+                text = " ${uiState.totalVPFor(uiState.currentPlayer)}/${uiState.victoryPointsToWin} VP",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -1178,8 +1195,70 @@ fun ExplorationEventCard(
 }
 
 @Composable
+fun ConsolationChoiceCard(
+    onChoice: (RollConsolation) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.width(300.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xEE1A1A2E))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("🎲", fontSize = 36.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "No Production!",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Choose your consolation:",
+                color = Color.Gray,
+                fontSize = 13.sp
+            )
+            Spacer(Modifier.height(12.dp))
+            
+            RollConsolation.entries.forEach { choice ->
+                Button(
+                    onClick = { onChoice(choice) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 3.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = when (choice) {
+                            RollConsolation.GAIN_RESOURCE -> Color(0xFF4CAF50)
+                            RollConsolation.BONUS_ACTION -> Color(0xFFFF9800)
+                            RollConsolation.DISCOUNT_TRADE -> Color(0xFF2196F3)
+                        }
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        "${choice.emoji} ${choice.displayName}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        choice.description,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun VictoryScreen(
     winner: Player,
+    metaProgression: MetaProgression,
     onRestart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -1274,7 +1353,7 @@ fun VictoryScreen(
                     fontSize = 18.sp
                 )
                 Text(
-                    "Final Score: ${winner.calculateVictoryPoints() + winner.victoryPoints} VP",
+                    "Final Score: ${winner.calculateVictoryPoints() + winner.victoryPoints} VP", // Winner VP already includes lantern bonus via checkVictory
                     color = Color.LightGray,
                     fontSize = 14.sp
                 )
@@ -1309,6 +1388,16 @@ fun VictoryScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                 }
+                
+                // Lifetime stats
+                Divider(color = Color.Gray.copy(alpha = 0.3f))
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "📊 Lifetime: ${metaProgression.gamesWon}W/${metaProgression.gamesPlayed}G • ${metaProgression.totalVPEarned} VP",
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+                Spacer(Modifier.height(12.dp))
                 
                 Button(
                     onClick = onRestart,
@@ -1363,9 +1452,15 @@ fun SelectedTileInfo(
             Spacer(Modifier.height(8.dp))
             
             if (!tile.isRevealed) {
+                val riskInfo = when (tile.zone) {
+                    Zone.SURFACE -> "🟢 Safe" to Color(0xFF4CAF50)
+                    Zone.CRUST -> "🟡 Moderate risk" to Color(0xFFFFEB3B)
+                    Zone.MANTLE -> "🟠 Risky — better rewards" to Color(0xFFFF9800)
+                    Zone.CORE -> "🔴 Dangerous — richest rewards" to Color(0xFFF44336)
+                }
                 Text(
-                    "❓ Unexplored",
-                    color = Color.Gray,
+                    "❓ Unexplored — ${riskInfo.first}",
+                    color = riskInfo.second,
                     fontSize = 14.sp
                 )
                 if (canExplore) {
@@ -1481,6 +1576,7 @@ private fun getBuildFailureReason(player: Player, uiState: GameState?): String {
 @Composable
 fun DifficultySelectionScreen(
     onSelectDifficulty: (Difficulty) -> Unit,
+    metaProgression: MetaProgression = MetaProgression(),
     modifier: Modifier = Modifier
 ) {
     // Animation for screen appearance
@@ -1576,6 +1672,19 @@ fun DifficultySelectionScreen(
                     color = Color.Gray,
                     textAlign = TextAlign.Center
                 )
+                
+                // Show lifetime stats if any games played
+                if (metaProgression.gamesPlayed > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Divider(color = Color.Gray.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "📊 ${metaProgression.gamesWon}/${metaProgression.gamesPlayed} wins • ${metaProgression.totalVPEarned} total VP • ${metaProgression.lifetimeAchievements.size} achievements",
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

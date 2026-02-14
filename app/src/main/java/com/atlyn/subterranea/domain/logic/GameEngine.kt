@@ -29,16 +29,10 @@ object GameEngine {
             tile.terrain.produces != null
         }
         
-        // LUCKY 7 BONUS: Rolling 7 gives a consolation prize
+        // LUCKY 7 BONUS: Rolling 7 gives a consolation choice
         if (diceResult.total == 7 && producingTiles.isEmpty()) {
-            var player = newState.currentPlayer
-            // Give player a random common resource as consolation
-            val commonResources = listOf(Resource.MYCELIUM, Resource.BASALT, Resource.CHITIN, Resource.LICHEN)
-            val bonusResource = commonResources.random()
-            player = player.addResource(bonusResource, 1)
-            newState = newState.updatePlayer(player)
-                .addEvent("🍀 Lucky 7! +1 ${bonusResource.displayName()} as consolation")
-            return newState.copy(lastProduction = mapOf(bonusResource to 1))
+            return newState.copy(pendingConsolation = true)
+                .addEvent("🍀 Lucky 7! Choose your consolation...")
         }
         
         if (producingTiles.isEmpty()) {
@@ -52,9 +46,12 @@ object GameEngine {
             }
             if (darkProducingTiles.isNotEmpty()) {
                 val resources = darkProducingTiles.mapNotNull { it.terrain.produces?.displayName() }.distinct()
-                return newState.addEvent("🌑 ${resources.joinToString(", ")} would produce on ${diceResult.total} if illuminated!")
+                return newState.copy(pendingConsolation = true)
+                    .addEvent("🌑 ${resources.joinToString(", ")} would produce if illuminated! Choose consolation...")
             }
-            return newState.addEvent("No tiles produce on ${diceResult.total}")
+            // Non-producing roll also gives consolation
+            return newState.copy(pendingConsolation = true)
+                .addEvent("No tiles produce on ${diceResult.total}. Choose consolation...")
         }
         
         // Track total production for display
@@ -101,6 +98,39 @@ object GameEngine {
         }
         
         return newState.copy(lastProduction = productionTotals).updatePlayer(player)
+    }
+    
+    /**
+     * Resolve the player's consolation choice after a non-producing roll
+     */
+    fun resolveConsolation(state: GameState, choice: RollConsolation): GameState {
+        if (!state.pendingConsolation) return state
+        
+        var newState = state.copy(pendingConsolation = false)
+        var player = newState.currentPlayer
+        
+        when (choice) {
+            RollConsolation.GAIN_RESOURCE -> {
+                val commonResources = listOf(Resource.MYCELIUM, Resource.BASALT, Resource.CHITIN, Resource.LICHEN)
+                val bonus = commonResources.random()
+                player = player.addResource(bonus, 1)
+                newState = newState.updatePlayer(player)
+                    .addEvent("🎁 Scavenged +1 ${bonus.displayName()}")
+                    .copy(lastProduction = mapOf(bonus to 1))
+            }
+            RollConsolation.BONUS_ACTION -> {
+                newState = newState.copy(
+                    maxActionsPerTurn = newState.maxActionsPerTurn + 1
+                ).addEvent("⚡ Hustle! +1 action this turn")
+            }
+            RollConsolation.DISCOUNT_TRADE -> {
+                newState = newState.copy(
+                    discountTradeAvailable = true
+                ).addEvent("🤝 Barter! One 2:1 trade available this turn")
+            }
+        }
+        
+        return newState
     }
     
     /**
@@ -476,15 +506,32 @@ object GameEngine {
         
         // Illuminate the center tile and all neighbors
         val tilesToLight = listOf(center) + center.neighbors()
+        var tilesLit = 0
         
         tilesToLight.forEach { coord ->
             val tile = newBoard[coord]
             if (tile != null && tile.isRevealed && !tile.isIlluminated) {
                 newBoard[coord] = tile.copy(isIlluminated = true)
+                tilesLit++
             }
         }
         
-        return state.copy(board = newBoard).addEvent("💡 Area illuminated!")
+        // Track tiles illuminated on the lantern structure for VP bonus
+        val updatedStructures = state.structures.map { s ->
+            if (s.location == center && s.type == StructureType.LANTERN) {
+                s.copy(tilesIlluminated = s.tilesIlluminated + tilesLit)
+            } else s
+        }
+        
+        var newState = state.copy(board = newBoard, structures = updatedStructures)
+            .addEvent("💡 Area illuminated! ($tilesLit tiles)")
+        
+        // Award VP if lantern illuminated 4+ tiles
+        if (tilesLit >= 4) {
+            newState = newState.addEvent("🏆 Well-placed Lantern! +1 VP")
+        }
+        
+        return newState
     }
     
     /**
@@ -526,17 +573,23 @@ object GameEngine {
         // Tick structure cooldowns
         val stateWithCooldowns = tickStructureCooldowns(state)
         
+        // Reset max actions to base value (undo any bonus action from consolation)
+        val baseMaxActions = state.selectedCharacter.modifyMaxActions(state.difficulty.maxActionsPerTurn)
+        
         return stateWithCooldowns.copy(
             currentPlayerIndex = nextPlayerIndex,
             turnNumber = newTurnNumber,
             turnPhase = TurnPhase.ROLL_DICE,
             actionsThisTurn = 0,
+            maxActionsPerTurn = baseMaxActions,
             canExploreThisTurn = true,
             exploresThisTurn = 0,
             lastDiceResult = null,
             lastExplorationEvent = null,
             selectedTile = null,
-            showBuildMenu = false
+            showBuildMenu = false,
+            discountTradeAvailable = false,
+            pendingConsolation = false
         ).addEvent("➡️ Turn $newTurnNumber - ${state.players[nextPlayerIndex].name}'s turn")
     }
     
@@ -545,7 +598,7 @@ object GameEngine {
      */
     fun checkVictory(state: GameState): GameState {
         for (player in state.players) {
-            val totalVP = player.calculateVictoryPoints() + player.victoryPoints
+            val totalVP = state.totalVPFor(player)
             
             if (totalVP >= state.victoryPointsToWin) {
                 return state.copy(
@@ -661,6 +714,7 @@ object GameEngine {
     /**
      * Trade resources at ratio based on difficulty
      * Easy: 3:1, Normal: 4:1, Hard: 5:1, Nightmare: 6:1
+     * If discountTradeAvailable, first trade is 2:1
      */
     fun tradeResources(state: GameState, give: Resource, receive: Resource): GameState {
         if (give == receive) {
@@ -668,7 +722,8 @@ object GameEngine {
         }
         
         val player = state.currentPlayer
-        val tradeRatio = state.difficulty.tradeRatio
+        val useDiscount = state.discountTradeAvailable
+        val tradeRatio = if (useDiscount) 2 else state.difficulty.tradeRatio
         
         if (player.getResourceCount(give) < tradeRatio) {
             return state.addEvent("❌ Need $tradeRatio ${give.displayName()} to trade!")
@@ -678,15 +733,23 @@ object GameEngine {
             .addResource(give, -tradeRatio)
             .addResource(receive, 1)
         
-        return state.updatePlayer(newPlayer)
+        var newState = state.updatePlayer(newPlayer)
             .addEvent("🔄 Traded $tradeRatio ${give.displayName()} for 1 ${receive.displayName()}")
+        
+        // Consume the discount trade
+        if (useDiscount) {
+            newState = newState.copy(discountTradeAvailable = false)
+                .addEvent("🤝 Discount trade used!")
+        }
+        
+        return newState
     }
     
     /**
      * Check if player can make a trade based on difficulty trade ratio
      */
     fun canTrade(state: GameState): Boolean {
-        val tradeRatio = state.difficulty.tradeRatio
+        val tradeRatio = if (state.discountTradeAvailable) 2 else state.difficulty.tradeRatio
         return state.currentPlayer.resources.any { (_, count) -> count >= tradeRatio }
     }
     
@@ -694,7 +757,7 @@ object GameEngine {
      * Get resources that can be given in a trade based on difficulty
      */
     fun getTradableResources(state: GameState): List<Resource> {
-        val tradeRatio = state.difficulty.tradeRatio
+        val tradeRatio = if (state.discountTradeAvailable) 2 else state.difficulty.tradeRatio
         return state.currentPlayer.resources
             .filter { (_, count) -> count >= tradeRatio }
             .keys.toList()

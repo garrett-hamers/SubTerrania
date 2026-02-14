@@ -145,8 +145,17 @@ fun HexMap(
                     radius = hexSize * 0.3f,
                     center = center
                 )
+                // Show risk indicator for explorable tiles, "?" for others
+                val label = if (coord in explorableTiles) {
+                    when (tile.zone) {
+                        Zone.SURFACE -> "🟢"
+                        Zone.CRUST -> "🟡"
+                        Zone.MANTLE -> "🟠"
+                        Zone.CORE -> "🔴"
+                    }
+                } else "?"
                 drawContext.canvas.nativeCanvas.drawText(
-                    if (coord in explorableTiles) "👆" else "?",
+                    label,
                     center.x,
                     center.y + 8f,
                     android.graphics.Paint().apply {

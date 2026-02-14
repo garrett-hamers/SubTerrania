@@ -1,7 +1,9 @@
 package com.atlyn.subterranea.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import com.atlyn.subterranea.domain.logic.BoardGenerator
 import com.atlyn.subterranea.domain.logic.GameEngine
 import com.atlyn.subterranea.domain.model.*
@@ -12,8 +14,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 private const val TAG = "GameVM"
+private const val PREFS_NAME = "subterranea_meta"
 
-class GameViewModel : ViewModel() {
+class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(GameState())
     val uiState: StateFlow<GameState> = _uiState.asStateFlow()
     
@@ -46,7 +49,7 @@ class GameViewModel : ViewModel() {
     val selectedMapPreset: StateFlow<MapPreset> = _selectedMapPreset.asStateFlow()
     
     // Meta-progression (persisted across games)
-    private val _metaProgression = MutableStateFlow(MetaProgression())
+    private val _metaProgression = MutableStateFlow(loadMetaProgression())
     val metaProgression: StateFlow<MetaProgression> = _metaProgression.asStateFlow()
     
     // Fast mode toggle
@@ -120,6 +123,8 @@ class GameViewModel : ViewModel() {
     // Fast mode toggle
     fun toggleFastMode() {
         _fastModeEnabled.value = !_fastModeEnabled.value
+        _metaProgression.update { it.copy(fastModeEnabled = _fastModeEnabled.value) }
+        saveMetaProgression(_metaProgression.value)
         playSound(GameSound.BUTTON_TAP)
     }
     
@@ -242,6 +247,9 @@ class GameViewModel : ViewModel() {
             
             updated
         }
+        
+        // Persist to disk
+        saveMetaProgression(_metaProgression.value)
     }
     
     /**
@@ -263,6 +271,23 @@ class GameViewModel : ViewModel() {
      */
     fun dismissInteractiveEvent() {
         _uiState.update { it.copy(pendingInteractiveEvent = null, pendingEventCoord = null) }
+    }
+    
+    /**
+     * Handle consolation choice after a non-producing roll
+     */
+    fun handleConsolationChoice(choice: RollConsolation) {
+        _uiState.update { currentState ->
+            GameEngine.resolveConsolation(currentState, choice)
+        }
+        
+        // Trigger production animation if resource was gained
+        if (_uiState.value.lastProduction.isNotEmpty()) {
+            playSound(GameSound.RESOURCE_GAIN)
+            _productionTrigger.value = System.currentTimeMillis()
+        } else {
+            playSound(GameSound.BUTTON_TAP)
+        }
     }
 
     fun onTileClicked(coord: HexCoordinate) {
@@ -348,6 +373,7 @@ class GameViewModel : ViewModel() {
         // Check for victory
         if (_uiState.value.gameOver) {
             playSound(GameSound.VICTORY)
+            recordGameEnd(true)
         }
     }
     
@@ -378,6 +404,7 @@ class GameViewModel : ViewModel() {
             // Check for victory after building
             if (_uiState.value.gameOver) {
                 playSound(GameSound.VICTORY)
+                recordGameEnd(true)
             }
         }
     }
@@ -472,5 +499,43 @@ class GameViewModel : ViewModel() {
         }
         Log.d(TAG, "Available structures: $available")
         return available
+    }
+    
+    // --- Persistence ---
+    
+    private fun getPrefs() = getApplication<Application>()
+        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    
+    private fun loadMetaProgression(): MetaProgression {
+        val prefs = getPrefs()
+        val achievementNames = prefs.getStringSet("achievements", emptySet()) ?: emptySet()
+        val achievements = achievementNames.mapNotNull { name ->
+            try { Achievement.valueOf(name) } catch (_: Exception) { null }
+        }.toSet()
+        
+        val characterNames = prefs.getStringSet("characters", setOf("EXPLORER")) ?: setOf("EXPLORER")
+        val characters = characterNames.mapNotNull { name ->
+            try { GameCharacter.valueOf(name) } catch (_: Exception) { null }
+        }.toSet()
+        
+        return MetaProgression(
+            lifetimeAchievements = achievements,
+            gamesPlayed = prefs.getInt("gamesPlayed", 0),
+            gamesWon = prefs.getInt("gamesWon", 0),
+            totalVPEarned = prefs.getInt("totalVPEarned", 0),
+            unlockedCharacters = characters,
+            fastModeEnabled = prefs.getBoolean("fastMode", false)
+        )
+    }
+    
+    private fun saveMetaProgression(meta: MetaProgression) {
+        getPrefs().edit()
+            .putStringSet("achievements", meta.lifetimeAchievements.map { it.name }.toSet())
+            .putStringSet("characters", meta.unlockedCharacters.map { it.name }.toSet())
+            .putInt("gamesPlayed", meta.gamesPlayed)
+            .putInt("gamesWon", meta.gamesWon)
+            .putInt("totalVPEarned", meta.totalVPEarned)
+            .putBoolean("fastMode", meta.fastModeEnabled)
+            .apply()
     }
 }

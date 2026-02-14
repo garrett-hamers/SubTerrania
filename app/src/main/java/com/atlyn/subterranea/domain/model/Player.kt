@@ -128,7 +128,7 @@ enum class StructureType(
     ),
     BEETLE_STABLE(
         displayName = "Beetle Stable",
-        cost = mapOf(Resource.CHITIN to 2, Resource.LICHEN to 3),
+        cost = mapOf(Resource.CHITIN to 2, Resource.LICHEN to 2),
         victoryPoints = 1,
         description = "Beetles help transport resources"
     ),

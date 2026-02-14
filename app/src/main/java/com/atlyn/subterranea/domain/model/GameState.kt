@@ -38,9 +38,23 @@ data class GameState(
     val mapPreset: MapPreset = MapPreset.STANDARD,
     val bonusActionsFirstTurn: Int = 0, // From meta-progression
     val firstStructureDiscount: Int = 0, // From meta-progression
-    val hasUsedFirstStructureDiscount: Boolean = false
+    val hasUsedFirstStructureDiscount: Boolean = false,
+    val pendingConsolation: Boolean = false, // Waiting for player to pick a roll consolation
+    val discountTradeAvailable: Boolean = false // One-time 2:1 trade from consolation choice
+
 ) {
     val currentPlayer: Player get() = players[currentPlayerIndex]
+    
+    /**
+     * Calculate total VP for a player, including lantern placement bonuses
+     */
+    fun totalVPFor(player: Player): Int {
+        val baseVP = player.calculateVictoryPoints() + player.victoryPoints
+        val lanternBonusVP = structures.count { s ->
+            s.ownerId == player.id && s.type == StructureType.LANTERN && s.tilesIlluminated >= 4
+        }
+        return baseVP + lanternBonusVP
+    }
     
     // Max explores based on difficulty
     val maxExploresPerTurn: Int get() = if (difficulty.multipleExploresPerTurn) 2 else 1

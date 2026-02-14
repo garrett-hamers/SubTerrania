@@ -163,3 +163,28 @@ sealed class GameAction {
     data class Trade(val give: Map<Resource, Int>, val receive: Map<Resource, Int>) : GameAction()
     data object EndTurn : GameAction()
 }
+
+/**
+ * Choices presented when rolling 7 (or any non-producing roll)
+ */
+enum class RollConsolation(
+    val displayName: String,
+    val emoji: String,
+    val description: String
+) {
+    GAIN_RESOURCE(
+        displayName = "Scavenge",
+        emoji = "🎁",
+        description = "Gain 1 random common resource"
+    ),
+    BONUS_ACTION(
+        displayName = "Hustle",
+        emoji = "⚡",
+        description = "+1 bonus action this turn"
+    ),
+    DISCOUNT_TRADE(
+        displayName = "Barter",
+        emoji = "🤝",
+        description = "Unlock one 2:1 trade this turn"
+    )
+}

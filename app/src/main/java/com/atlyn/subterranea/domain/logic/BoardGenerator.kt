@@ -129,7 +129,30 @@ object BoardGenerator {
         val shuffledNumbers = goodNumbers.shuffled(random)
         // Pad with medium numbers if needed
         val allNumbers = (shuffledNumbers + mediumNumbers.shuffled(random)).take(6)
-        shuffledNumberMap = surfaceCoords.zip(allNumbers).toMap()
+        val numberAssignment = surfaceCoords.zip(allNumbers).toMap().toMutableMap()
+        
+        // Safety guarantee: at least one common resource tile gets a 6 or 8
+        val commonTerrains = setOf(
+            TerrainType.LICHEN_FIELD, TerrainType.FUNGAL_FOREST,
+            TerrainType.BASALT_QUARRY, TerrainType.BEETLE_FARM
+        )
+        val commonCoords = shuffledTerrainMap.filter { it.value in commonTerrains }.keys
+        val hasGoodNumberOnCommon = commonCoords.any { numberAssignment[it] in listOf(6, 8) }
+        
+        if (!hasGoodNumberOnCommon && commonCoords.isNotEmpty()) {
+            // Swap: give a common resource tile a 6 or 8
+            val targetCoord = commonCoords.random(random)
+            val donorCoord = numberAssignment.entries
+                .firstOrNull { it.value in listOf(6, 8) && it.key !in commonCoords }
+                ?.key
+            if (donorCoord != null) {
+                val temp = numberAssignment[targetCoord]!!
+                numberAssignment[targetCoord] = numberAssignment[donorCoord]!!
+                numberAssignment[donorCoord] = temp
+            }
+        }
+        
+        shuffledNumberMap = numberAssignment
     }
     
     private fun generateUnexploredTile(
