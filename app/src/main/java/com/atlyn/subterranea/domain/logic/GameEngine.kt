@@ -22,7 +22,7 @@ object GameEngine {
         
         // Find all tiles with matching number tokens
         val producingTiles = state.board.values.filter { tile ->
-            tile.numberToken == diceResult.total &&
+            tile.matchesRoll(diceResult.total) &&
             tile.isRevealed &&
             tile.isIlluminated &&
             !tile.hasRubble &&
@@ -38,7 +38,7 @@ object GameEngine {
         if (producingTiles.isEmpty()) {
             // Check for tiles that WOULD produce if illuminated (ghost production feedback)
             val darkProducingTiles = state.board.values.filter { tile ->
-                tile.numberToken == diceResult.total &&
+                tile.matchesRoll(diceResult.total) &&
                 tile.isRevealed &&
                 !tile.isIlluminated &&
                 !tile.hasRubble &&
@@ -595,6 +595,7 @@ object GameEngine {
             discountTradeAvailable = false,
             pendingConsolation = false
         ).addEvent("➡️ Turn $newTurnNumber - ${state.players[nextPlayerIndex].name}'s turn")
+            .let { checkTurnLimit(it) }
     }
     
     /**
@@ -615,8 +616,21 @@ object GameEngine {
     }
     
     /**
-     * Get list of valid actions for current player
+     * Check if the turn limit has been reached (loss condition)
      */
+    private fun checkTurnLimit(state: GameState): GameState {
+        if (state.gameOver) return state
+        val maxTurns = state.difficulty.maxTurns
+        if (state.turnNumber > maxTurns) {
+            val player = state.currentPlayer
+            val totalVP = state.totalVPFor(player)
+            return state.copy(
+                gameOver = true,
+                winner = null
+            ).addEvent("⏰ Time's up! Reached turn $maxTurns with $totalVP/${state.victoryPointsToWin} VP.")
+        }
+        return state
+    }
     fun getAvailableActions(state: GameState): List<GameAction> {
         val actions = mutableListOf<GameAction>()
         

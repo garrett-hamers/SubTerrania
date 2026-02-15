@@ -162,12 +162,12 @@ enum class Achievement(
     FIRST_EXPLORER(
         displayName = "First Explorer",
         description = "First to reveal a tile in the Mantle zone",
-        victoryPoints = 2
+        victoryPoints = 1
     ),
     CORE_SEEKER(
         displayName = "Core Seeker", 
         description = "First to reveal a tile in the Core zone",
-        victoryPoints = 3
+        victoryPoints = 2
     ),
     MASTER_BUILDER(
         displayName = "Master Builder",
@@ -182,7 +182,7 @@ enum class Achievement(
     DEEP_DELVER(
         displayName = "Deep Delver",
         description = "Reveal 10 tiles",
-        victoryPoints = 2
+        victoryPoints = 1
     ),
     ILLUMINATOR(
         displayName = "The Illuminator",

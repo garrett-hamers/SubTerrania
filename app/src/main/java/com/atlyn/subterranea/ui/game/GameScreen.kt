@@ -1571,8 +1571,10 @@ fun SelectedTileInfo(
                 
                 // Production number
                 tile.numberToken?.let { number ->
+                    val secondary = tile.secondaryNumberToken
+                    val numberText = if (secondary != null) "Produces on: $number or $secondary" else "Produces on: $number"
                     Text(
-                        "Produces on: $number",
+                        numberText,
                         color = Color.LightGray,
                         fontSize = 12.sp
                     )

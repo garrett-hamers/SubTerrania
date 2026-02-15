@@ -35,22 +35,6 @@ enum class Difficulty(
     val startingResources: Map<Resource, Int>
         get() = when (this) {
             EASY -> mapOf(
-                Resource.MYCELIUM to 4,
-                Resource.BASALT to 4,
-                Resource.CHITIN to 4,
-                Resource.LICHEN to 4,
-                Resource.IRON_ORE to 2,
-                Resource.CRYSTAL to 2
-            )
-            NORMAL -> mapOf(
-                Resource.MYCELIUM to 3,
-                Resource.BASALT to 3,
-                Resource.CHITIN to 3,
-                Resource.LICHEN to 3,
-                Resource.IRON_ORE to 1,
-                Resource.CRYSTAL to 1
-            )
-            HARD -> mapOf(
                 Resource.MYCELIUM to 2,
                 Resource.BASALT to 2,
                 Resource.CHITIN to 2,
@@ -58,11 +42,27 @@ enum class Difficulty(
                 Resource.IRON_ORE to 1,
                 Resource.CRYSTAL to 1
             )
-            NIGHTMARE -> mapOf(
+            NORMAL -> mapOf(
                 Resource.MYCELIUM to 1,
                 Resource.BASALT to 1,
                 Resource.CHITIN to 1,
                 Resource.LICHEN to 1,
+                Resource.IRON_ORE to 0,
+                Resource.CRYSTAL to 0
+            )
+            HARD -> mapOf(
+                Resource.MYCELIUM to 1,
+                Resource.BASALT to 1,
+                Resource.CHITIN to 1,
+                Resource.LICHEN to 1,
+                Resource.IRON_ORE to 0,
+                Resource.CRYSTAL to 0
+            )
+            NIGHTMARE -> mapOf(
+                Resource.MYCELIUM to 0,
+                Resource.BASALT to 0,
+                Resource.CHITIN to 0,
+                Resource.LICHEN to 0,
                 Resource.IRON_ORE to 0,
                 Resource.CRYSTAL to 0
             )
@@ -73,10 +73,10 @@ enum class Difficulty(
      */
     val victoryPointsToWin: Int
         get() = when (this) {
-            EASY -> 8
-            NORMAL -> 10
-            HARD -> 12
-            NIGHTMARE -> 15
+            EASY -> 12
+            NORMAL -> 14
+            HARD -> 18
+            NIGHTMARE -> 20
         }
     
     /**
@@ -84,7 +84,7 @@ enum class Difficulty(
      */
     val maxActionsPerTurn: Int
         get() = when (this) {
-            EASY -> 3
+            EASY -> 2
             NORMAL -> 2
             HARD -> 2
             NIGHTMARE -> 1
@@ -106,10 +106,10 @@ enum class Difficulty(
      */
     val productionBonus: Int
         get() = when (this) {
-            EASY -> 1  // +1 resource per producing tile
+            EASY -> 0
             NORMAL -> 0
             HARD -> 0
-            NIGHTMARE -> 0  // No bonus, plus rare resources reduced
+            NIGHTMARE -> 0
         }
     
     /**
@@ -129,9 +129,9 @@ enum class Difficulty(
     val hazardChance: Float
         get() = when (this) {
             EASY -> 0.1f     // 10% chance of hazards
-            NORMAL -> 0.25f  // 25% chance
-            HARD -> 0.4f     // 40% chance
-            NIGHTMARE -> 0.6f // 60% chance
+            NORMAL -> 0.3f   // 30% chance
+            HARD -> 0.5f     // 50% chance
+            NIGHTMARE -> 0.7f // 70% chance
         }
     
     /**
@@ -161,7 +161,7 @@ enum class Difficulty(
      */
     val multipleExploresPerTurn: Boolean
         get() = when (this) {
-            EASY -> true   // Can explore twice
+            EASY -> false
             NORMAL -> false
             HARD -> false
             NIGHTMARE -> false
@@ -172,9 +172,20 @@ enum class Difficulty(
      */
     val tradeRatio: Int
         get() = when (this) {
-            EASY -> 3      // 3:1 trades
-            NORMAL -> 4    // 4:1 trades
-            HARD -> 5      // 5:1 trades
-            NIGHTMARE -> 6 // 6:1 trades
+            EASY -> 2      // 2:1 trades (encourages trading)
+            NORMAL -> 3    // 3:1 trades
+            HARD -> 4      // 4:1 trades
+            NIGHTMARE -> 5 // 5:1 trades
+        }
+    
+    /**
+     * Maximum turns before the game is lost
+     */
+    val maxTurns: Int
+        get() = when (this) {
+            EASY -> 40
+            NORMAL -> 30
+            HARD -> 25
+            NIGHTMARE -> 20
         }
 }

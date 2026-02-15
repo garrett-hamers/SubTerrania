@@ -227,8 +227,9 @@ private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Fl
         }
     )
     
-    // Draw number token
+    // Draw number token(s)
     tile.numberToken?.let { number ->
+        val secondary = tile.secondaryNumberToken
         // Background circle for number
         val numberColor = when (number) {
             6, 8 -> Color(0xFFFF5722) // High probability - red
@@ -243,13 +244,16 @@ private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Fl
             center = Offset(center.x, center.y + hexSize * 0.35f)
         )
         
+        val displayText = if (secondary != null) "$number|$secondary" else number.toString()
+        val fontSize = if (secondary != null) hexSize * 0.22f else hexSize * 0.3f
+        
         drawContext.canvas.nativeCanvas.drawText(
-            number.toString(),
+            displayText,
             center.x,
             center.y + hexSize * 0.42f,
             android.graphics.Paint().apply {
                 color = android.graphics.Color.BLACK
-                textSize = hexSize * 0.3f
+                textSize = fontSize
                 textAlign = android.graphics.Paint.Align.CENTER
                 isFakeBoldText = true
             }

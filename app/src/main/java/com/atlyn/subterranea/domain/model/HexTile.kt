@@ -6,6 +6,7 @@ data class HexTile(
     val isRevealed: Boolean = false,
     val terrain: TerrainType = TerrainType.UNKNOWN,
     val numberToken: Int? = null,
+    val secondaryNumberToken: Int? = null, // Surface tiles produce on either number
     val hasRubble: Boolean = false,
     val isIlluminated: Boolean = false,
     val presetHint: String? = null // Used for map preset event generation
@@ -13,6 +14,10 @@ data class HexTile(
     fun produce(): Resource? {
         if (!isRevealed || hasRubble || !isIlluminated) return null
         return terrain.produces
+    }
+    
+    fun matchesRoll(diceTotal: Int): Boolean {
+        return numberToken == diceTotal || secondaryNumberToken == diceTotal
     }
 }
 

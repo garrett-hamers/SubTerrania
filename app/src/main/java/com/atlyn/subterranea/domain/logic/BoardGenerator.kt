@@ -78,6 +78,7 @@ object BoardGenerator {
     // Shuffled mappings regenerated each game
     private var shuffledTerrainMap: Map<HexCoordinate, TerrainType> = emptyMap()
     private var shuffledNumberMap: Map<HexCoordinate, Int> = emptyMap()
+    private var shuffledSecondaryNumberMap: Map<HexCoordinate, Int> = emptyMap()
     
     private fun getSurfaceTerrainsForPreset(preset: MapPreset): List<TerrainType> {
         return when (preset) {
@@ -125,13 +126,11 @@ object BoardGenerator {
         val shuffledTerrains = terrainsForPreset.shuffled(random)
         shuffledTerrainMap = surfaceCoords.zip(shuffledTerrains).toMap()
         
-        // Shuffle good numbers randomly
-        val shuffledNumbers = goodNumbers.shuffled(random)
-        // Pad with medium numbers if needed
-        val allNumbers = (shuffledNumbers + mediumNumbers.shuffled(random)).take(6)
-        val numberAssignment = surfaceCoords.zip(allNumbers).toMap().toMutableMap()
+        // Guarantee at least 2 tiles have a 6 or 8 for reliable early production
+        val baseNumbers = listOf(6, 8, 5, 9, 4, 10).shuffled(random)
+        val numberAssignment = surfaceCoords.zip(baseNumbers).toMap().toMutableMap()
         
-        // Safety guarantee: at least one common resource tile gets a 6 or 8
+        // Ensure at least one common resource tile gets a 6 or 8
         val commonTerrains = setOf(
             TerrainType.LICHEN_FIELD, TerrainType.FUNGAL_FOREST,
             TerrainType.BASALT_QUARRY, TerrainType.BEETLE_FARM
@@ -153,6 +152,10 @@ object BoardGenerator {
         }
         
         shuffledNumberMap = numberAssignment
+        
+        // Secondary numbers from complementary range for better roll coverage
+        val secondaryPool = listOf(3, 4, 5, 9, 10, 11).shuffled(random)
+        shuffledSecondaryNumberMap = surfaceCoords.zip(secondaryPool).toMap()
     }
     
     private fun generateUnexploredTile(
@@ -193,6 +196,7 @@ object BoardGenerator {
         // Use shuffled terrain and number assignments for replayability
         val terrain = shuffledTerrainMap[coord] ?: surfaceTerrains.random()
         val number = shuffledNumberMap[coord] ?: goodNumbers.random()
+        val secondaryNumber = shuffledSecondaryNumberMap[coord]
         
         return HexTile(
             coord, 
@@ -200,6 +204,7 @@ object BoardGenerator {
             isRevealed = true, 
             terrain = terrain,
             numberToken = number,
+            secondaryNumberToken = secondaryNumber,
             isIlluminated = true // Surface is always lit
         )
     }
