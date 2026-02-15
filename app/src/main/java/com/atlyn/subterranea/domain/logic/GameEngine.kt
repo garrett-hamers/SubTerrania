@@ -91,7 +91,7 @@ object GameEngine {
             
             player = player.addResource(resource, amount)
             productionTotals[resource] = (productionTotals[resource] ?: 0) + amount
-            newState = newState.addEvent("⛏️ ${tile.terrain.name} produces $amount ${resource.displayName()}")
+            newState = newState.addEvent("⛏️ ${tile.terrain.displayName()} produces $amount ${resource.displayName()}")
         }
         
         // Check for crystal baron achievement
@@ -177,7 +177,7 @@ object GameEngine {
             canExploreThisTurn = canStillExplore,
             exploresThisTurn = newExploresThisTurn,
             actionsThisTurn = state.actionsThisTurn + 1
-        ).addEvent("🔦 Explored ${newTile.terrain.name} at (${coord.q}, ${coord.r})")
+        ).addEvent("🔦 Explored ${newTile.terrain.displayName()} at (${coord.q}, ${coord.r})")
         
         // Apply exploration event effects
         newState = applyExplorationEvent(newState, event, coord)
@@ -266,12 +266,12 @@ object GameEngine {
         val terrain = terrainOptions.random()
         
         // Number tokens: Better numbers in deeper zones (risk/reward)
-        // Surface explored tiles get medium numbers, deeper = better
+        // Spread across range to avoid too many tiles producing on same number
         val numberPool = when (tile.zone) {
-            Zone.SURFACE -> listOf(4, 5, 5, 9, 9, 10) // Medium numbers
-            Zone.CRUST -> listOf(5, 5, 6, 8, 9, 9)    // Good numbers  
-            Zone.MANTLE -> listOf(5, 6, 6, 8, 8, 9)   // Great numbers
-            Zone.CORE -> listOf(6, 6, 7, 7, 8, 8)     // Best numbers in the core
+            Zone.SURFACE -> listOf(3, 4, 5, 9, 10, 11)  // Spread across range
+            Zone.CRUST -> listOf(4, 5, 6, 8, 9, 10)     // Good spread
+            Zone.MANTLE -> listOf(5, 6, 6, 8, 8, 9)     // Great numbers
+            Zone.CORE -> listOf(6, 6, 7, 7, 8, 8)       // Best numbers in the core
         }
         val numberToken = if (terrain.produces != null) numberPool.random() else null
         
@@ -384,7 +384,7 @@ object GameEngine {
                 event.resources.forEach { (resource, amount) ->
                     player = player.addResource(resource, amount)
                 }
-                newState = newState.addEvent("💎 Found treasure! ${event.resources}")
+                newState = newState.addEvent("💎 Found treasure! ${event.resources.entries.joinToString(", ") { "${it.value} ${it.key.displayName()}" }}")
             }
             is ExplorationEvent.CrystalVein -> {
                 player = player.addResource(Resource.CRYSTAL, event.amount)
@@ -528,7 +528,7 @@ object GameEngine {
         }
         
         var newState = state.copy(board = newBoard, structures = updatedStructures)
-            .addEvent("💡 Area illuminated! ($tilesLit tiles)")
+            .addEvent("💡 Area illuminated! ($tilesLit ${if (tilesLit == 1) "tile" else "tiles"})")
         
         // Award VP if lantern illuminated 4+ tiles
         if (tilesLit >= 4) {

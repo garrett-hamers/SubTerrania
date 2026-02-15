@@ -172,7 +172,7 @@ enum class Achievement(
     MASTER_BUILDER(
         displayName = "Master Builder",
         description = "Build 5 structures",
-        victoryPoints = 2
+        victoryPoints = 1
     ),
     CRYSTAL_BARON(
         displayName = "Crystal Baron",

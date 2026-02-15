@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -253,6 +254,9 @@ fun GameScreen(
             BuildMenu(
                 availableStructures = if (uiState.selectedTile != null) viewModel.getAvailableStructures() else emptyList(),
                 player = uiState.currentPlayer,
+                selectedTileName = uiState.selectedTile?.let { coord ->
+                    uiState.board[coord]?.terrain?.displayName()
+                },
                 onBuild = { type -> viewModel.buildStructure(type) },
                 onDismiss = { viewModel.toggleBuildMenu() },
                 modifier = Modifier.align(Alignment.Center)
@@ -863,6 +867,7 @@ fun ActionButton(
 fun BuildMenu(
     availableStructures: List<StructureType>,
     player: Player,
+    selectedTileName: String? = null,
     onBuild: (StructureType) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
@@ -905,6 +910,22 @@ fun BuildMenu(
                 color = Color(0x4400BCD4),
                 modifier = Modifier.padding(vertical = 8.dp)
             )
+            
+            if (selectedTileName != null) {
+                Text(
+                    "📍 Building on: $selectedTileName",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else {
+                Text(
+                    "⚠️ Select a tile first",
+                    color = Color(0xFFFF9800),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             
             // Show all structure types, highlighting which are available
             val allTypes = StructureType.entries.toList()
@@ -1083,6 +1104,7 @@ fun TradeMenu(
                         TradeOptionCard(
                             giveResource = giveResource,
                             playerAmount = player.getResourceCount(giveResource),
+                            tradeRatio = tradeRatio,
                             allResources = Resource.entries.filter { it != giveResource },
                             onTrade = { receive -> onTrade(giveResource, receive) }
                         )
@@ -1097,6 +1119,7 @@ fun TradeMenu(
 fun TradeOptionCard(
     giveResource: Resource,
     playerAmount: Int,
+    tradeRatio: Int = 4,
     allResources: List<Resource>,
     onTrade: (receive: Resource) -> Unit
 ) {
@@ -1115,7 +1138,7 @@ fun TradeOptionCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                "$giveEmoji Give 4 ${giveResource.displayName()} (have $playerAmount)",
+                "$giveEmoji Give $tradeRatio ${giveResource.displayName()} (have $playerAmount)",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp
@@ -1162,32 +1185,23 @@ fun TradeOptionCard(
 
 @Composable
 fun EventLog(events: List<String>, modifier: Modifier = Modifier) {
-    // Compact horizontal event log at the bottom of the screen
+    // Compact vertical event log at the bottom of the screen
     Card(
-        modifier = modifier.heightIn(max = 60.dp),
+        modifier = modifier.heightIn(max = 80.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0x88000000))
     ) {
-        Row(
+        LazyColumn(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Text(
-                "📜",
-                fontSize = 14.sp,
-                modifier = Modifier.padding(end = 6.dp)
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(events.take(3)) { event ->
-                    Text(
-                        event,
-                        color = Color.LightGray.copy(alpha = 0.9f),
-                        fontSize = 11.sp,
-                        maxLines = 2
-                    )
-                }
+            items(events.take(3)) { event ->
+                Text(
+                    "📜 $event",
+                    color = Color.LightGray.copy(alpha = 0.9f),
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -1240,11 +1254,20 @@ fun ExplorationEventCard(
                 fontSize = 14.sp
             )
             Spacer(Modifier.height(12.dp))
-            Text(
-                "Tap to dismiss",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp
-            )
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White.copy(alpha = 0.25f)
+                ),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    "OK",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }

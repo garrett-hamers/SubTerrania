@@ -25,5 +25,7 @@ enum class TerrainType(val produces: Resource?) {
     IRON_VEIN(Resource.IRON_ORE),
     CRYSTAL_GROTTO(Resource.CRYSTAL),
     MAGMA_FLOW(null), // Hazard/Geothermal
-    BEDROCK(null) // Unminable
+    BEDROCK(null); // Unminable
+
+    fun displayName(): String = name.lowercase().split("_").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
 }

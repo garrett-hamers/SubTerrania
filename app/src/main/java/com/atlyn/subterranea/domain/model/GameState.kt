@@ -63,7 +63,7 @@ data class GameState(
      * Get a contextual hint for the current game state
      */
     fun getCurrentHint(): String? {
-        if (!showTutorial) return null
+        if (!showTutorial || gameOver) return null
         
         val currentVP = totalVPFor(currentPlayer)
         val hasLantern = structures.any { it.type == StructureType.LANTERN && it.ownerId == currentPlayer.id }
@@ -84,7 +84,7 @@ data class GameState(
             
             // First turn - teach exploration
             turnNumber <= 2 && actionsThisTurn == 0 && turnPhase == TurnPhase.MAIN_ACTION -> 
-                "🔦 Tap a dark tile next to revealed tiles to explore!"
+                "🔦 Double-tap a dark tile next to revealed tiles to explore!"
             
             // No lanterns yet and can afford one - suggest building
             !hasLantern && currentPlayer.canAfford(StructureType.LANTERN.cost) && turnPhase == TurnPhase.MAIN_ACTION ->
