@@ -122,6 +122,10 @@ fun GameScreen(
                 )
             )
     ) {
+        // Only render game board when difficulty has been selected
+        val showDifficultyMenu by viewModel.showDifficultyMenu.collectAsState()
+        val metaProg by viewModel.metaProgression.collectAsState()
+        if (!showDifficultyMenu) {
         // Main hex map
         HexMap(
             board = uiState.board,
@@ -307,7 +311,6 @@ fun GameScreen(
         }
         
         // Victory screen
-        val metaProg by viewModel.metaProgression.collectAsState()
         if (uiState.gameOver && uiState.winner != null) {
             VictoryScreen(
                 winner = uiState.winner!!,
@@ -317,8 +320,9 @@ fun GameScreen(
             )
         }
         
+        } // end if (!showDifficultyMenu)
+        
         // Difficulty selection screen (shows at game start)
-        val showDifficultyMenu by viewModel.showDifficultyMenu.collectAsState()
         if (showDifficultyMenu) {
             DifficultySelectionScreen(
                 onSelectDifficulty = { difficulty -> viewModel.startGameWithDifficulty(difficulty) },

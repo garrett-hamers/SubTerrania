@@ -36,7 +36,7 @@ object GameEngine {
         }
         
         if (producingTiles.isEmpty()) {
-            // Check for tiles that WOULD produce if illuminated
+            // Check for tiles that WOULD produce if illuminated (ghost production feedback)
             val darkProducingTiles = state.board.values.filter { tile ->
                 tile.numberToken == diceResult.total &&
                 tile.isRevealed &&
@@ -46,12 +46,9 @@ object GameEngine {
             }
             if (darkProducingTiles.isNotEmpty()) {
                 val resources = darkProducingTiles.mapNotNull { it.terrain.produces?.displayName() }.distinct()
-                return newState.copy(pendingConsolation = true)
-                    .addEvent("🌑 ${resources.joinToString(", ")} would produce if illuminated! Choose consolation...")
+                return newState.addEvent("🌑 ${resources.joinToString(", ")} would produce if illuminated! Build a Lantern 🔦")
             }
-            // Non-producing roll also gives consolation
-            return newState.copy(pendingConsolation = true)
-                .addEvent("No tiles produce on ${diceResult.total}. Choose consolation...")
+            return newState.addEvent("No tiles produce on ${diceResult.total}.")
         }
         
         // Track total production for display
