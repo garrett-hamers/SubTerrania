@@ -241,10 +241,12 @@ class AutoPlaytest {
                 val resBefore = state.currentPlayer.resources.toMap()
                 val vpBeforeAction = state.totalVPFor(state.currentPlayer)
 
+                val eventCountBefore = state.eventLog.size
                 state = pickAndExecuteAction(state, profile)
 
-                if (state.actionsThisTurn > actionBefore) {
-                    actionsTaken++
+                val stateChanged = state.actionsThisTurn > actionBefore || state.eventLog.size > eventCountBefore
+                if (stateChanged) {
+                    if (state.actionsThisTurn > actionBefore) actionsTaken++
 
                     // Track resources spent
                     resBefore.forEach { (res, old) ->
@@ -254,22 +256,22 @@ class AutoPlaytest {
                         }
                     }
 
-                    // Track what type of action was taken
-                    val lastEvent = state.eventLog.firstOrNull() ?: ""
+                    // Track what type of action was taken — check ALL recent events
+                    // (builds can trigger secondary events like illumination)
+                    val recentEvents = state.eventLog.take(5).joinToString(" ")
                     when {
-                        lastEvent.contains("Built") -> {
+                        recentEvents.contains("Built") -> {
                             uniqueActionTypes.add("BUILD")
                             if (turnWithFirstBuild == -1) turnWithFirstBuild = turnNumber
-                            // Track structure type
                             for (type in StructureType.entries) {
-                                if (lastEvent.contains(type.displayName)) {
+                                if (recentEvents.contains(type.displayName)) {
                                     structureTypes[type] = (structureTypes[type] ?: 0) + 1
                                     if (type == StructureType.LANTERN && turnWithFirstLantern == -1)
                                         turnWithFirstLantern = turnNumber
                                 }
                             }
                         }
-                        lastEvent.contains("Explored") -> {
+                        recentEvents.contains("Explored") -> {
                             uniqueActionTypes.add("EXPLORE")
                             if (turnWithFirstExplore == -1) turnWithFirstExplore = turnNumber
                             // Track zone and terrain
@@ -280,46 +282,46 @@ class AutoPlaytest {
                                 }
                             }
                         }
-                        lastEvent.contains("Traded") -> {
+                        recentEvents.contains("Traded") -> {
                             uniqueActionTypes.add("TRADE")
                             tradesMade++
                         }
-                        lastEvent.contains("Cleared rubble") -> {
+                        recentEvents.contains("Cleared rubble") -> {
                             uniqueActionTypes.add("CLEAR")
                             rubbleCleared++
                         }
-                        lastEvent.contains("Overtime") || lastEvent.contains("Flare") ||
-                        lastEvent.contains("Survey") || lastEvent.contains("Spore Burst") -> {
+                        recentEvents.contains("Overtime") || recentEvents.contains("Flare") ||
+                        recentEvents.contains("Survey") || recentEvents.contains("Spore Burst") -> {
                             uniqueActionTypes.add("ABILITY")
                             abilitiesUsed++
                         }
                     }
 
                     // Check for hazards
-                    if (lastEvent.contains("Cave-in") || lastEvent.contains("cave-in", ignoreCase = true)) {
+                    if (recentEvents.contains("Cave-in", ignoreCase = true)) {
                         hazardsHit++; hazardTypes["CaveIn"] = (hazardTypes["CaveIn"] ?: 0) + 1
                     }
-                    if (lastEvent.contains("Gas") || lastEvent.contains("gas", ignoreCase = true)) {
+                    if (recentEvents.contains("Gas", ignoreCase = true) && recentEvents.contains("leak", ignoreCase = true)) {
                         hazardsHit++; hazardTypes["GasLeak"] = (hazardTypes["GasLeak"] ?: 0) + 1
                     }
-                    if (lastEvent.contains("Magma") || lastEvent.contains("magma", ignoreCase = true)) {
+                    if (recentEvents.contains("Magma", ignoreCase = true) && recentEvents.contains("burst", ignoreCase = true)) {
                         hazardsHit++; hazardTypes["MagmaBurst"] = (hazardTypes["MagmaBurst"] ?: 0) + 1
                     }
-                    if (lastEvent.contains("Tremor") || lastEvent.contains("tremor", ignoreCase = true)) {
+                    if (recentEvents.contains("Tremor", ignoreCase = true)) {
                         hazardsHit++; hazardTypes["Tremor"] = (hazardTypes["Tremor"] ?: 0) + 1
                     }
 
                     // Wasted action = VP didn't change and no meaningful state change
                     val vpAfterAction = state.totalVPFor(state.currentPlayer)
-                    if (vpAfterAction == vpBeforeAction && !lastEvent.contains("illuminated") &&
-                        !lastEvent.contains("Explored")) {
+                    if (vpAfterAction == vpBeforeAction && !recentEvents.contains("illuminated") &&
+                        !recentEvents.contains("Explored")) {
                         wastedActions++
                     }
 
                     eventsTriggered++
                 }
 
-                if (state.actionsThisTurn == actionBefore && safety > 3) break
+                if (state.actionsThisTurn == actionBefore && state.eventLog.size == eventCountBefore && safety > 3) break
             }
 
             if (actionsTaken == 0 && state.turnPhase == TurnPhase.MAIN_ACTION) stuckTurns++
@@ -423,29 +425,8 @@ class AutoPlaytest {
 
         val lanternCount = player.structuresBuilt.count { it.type == StructureType.LANTERN }
         val structureCount = player.structuresBuilt.size
-        val totalRes = player.resources.values.sum()
 
-        // ---- DECISION: Explore vs Build ----
-        // Use profile bias to determine priority order
-        val preferExplore = Math.random() < profile.exploreVsBuildBias
-
-        if (preferExplore) {
-            // Try explore first
-            val exploreResult = tryExplore(state, exploreActions, profile)
-            if (exploreResult != null) return exploreResult
-
-            val buildResult = tryBuild(state, buildActions, profile, lanternCount, structureCount)
-            if (buildResult != null) return buildResult
-        } else {
-            // Try build first
-            val buildResult = tryBuild(state, buildActions, profile, lanternCount, structureCount)
-            if (buildResult != null) return buildResult
-
-            val exploreResult = tryExplore(state, exploreActions, profile)
-            if (exploreResult != null) return exploreResult
-        }
-
-        // Try abilities (based on awareness)
+        // Step 0: Use abilities proactively (they don't cost actions!)
         if (Math.random() < profile.abilityAwareness) {
             val usable = GameEngine.getUsableAbilities(state)
             if (usable.isNotEmpty()) {
@@ -453,13 +434,40 @@ class AutoPlaytest {
             }
         }
 
-        // Try trading (based on propensity)
+        // Step 1: If we WANT to build but can't afford, try trading first
+        val wantToBuild = lanternCount < profile.lanternPriority ||
+            StructureType.entries.any { it.victoryPoints >= 2 }
+        val canAffordAnything = buildActions.isNotEmpty()
+
+        if (wantToBuild && !canAffordAnything && GameEngine.canTrade(state)) {
+            val tradeResult = tryTrade(state, profile, lanternCount)
+            if (tradeResult != null) return tradeResult
+        }
+
+        // Step 2: Explore vs Build based on profile bias
+        val preferExplore = Math.random() < profile.exploreVsBuildBias
+
+        if (preferExplore) {
+            val exploreResult = tryExplore(state, exploreActions, profile)
+            if (exploreResult != null) return exploreResult
+
+            val buildResult = tryBuild(state, buildActions, profile, lanternCount, structureCount)
+            if (buildResult != null) return buildResult
+        } else {
+            val buildResult = tryBuild(state, buildActions, profile, lanternCount, structureCount)
+            if (buildResult != null) return buildResult
+
+            val exploreResult = tryExplore(state, exploreActions, profile)
+            if (exploreResult != null) return exploreResult
+        }
+
+        // Step 3: Opportunistic trading if nothing else to do
         if (Math.random() < profile.tradePropensity && GameEngine.canTrade(state)) {
             val tradeResult = tryTrade(state, profile, lanternCount)
             if (tradeResult != null) return tradeResult
         }
 
-        // Clear rubble
+        // Step 4: Clear rubble
         if (clearActions.isNotEmpty()) {
             val best = clearActions.firstOrNull { state.board[it.location]?.isIlluminated == true }
                 ?: clearActions.first()

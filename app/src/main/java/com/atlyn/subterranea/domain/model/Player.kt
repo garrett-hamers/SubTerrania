@@ -72,22 +72,22 @@ enum class StructureAbility(
     FLARE(
         displayName = "Flare",
         description = "Reveal terrain type of 1 adjacent unexplored tile",
-        cooldown = 3
+        cooldown = 2
     ),
     OVERTIME(
         displayName = "Overtime",
         description = "Produce 1 resource regardless of dice roll",
-        cooldown = 4
+        cooldown = 3
     ),
     SURVEY(
         displayName = "Survey",
         description = "See number tokens on adjacent unexplored tiles",
-        cooldown = 2
+        cooldown = 1
     ),
     SPORE_BURST(
         displayName = "Spore Burst",
         description = "Gain 2 Mycelium immediately",
-        cooldown = 5
+        cooldown = 3
     )
 }
 

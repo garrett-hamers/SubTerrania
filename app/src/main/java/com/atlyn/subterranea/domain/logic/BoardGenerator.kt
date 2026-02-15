@@ -55,13 +55,13 @@ object BoardGenerator {
         return tiles
     }
 
-    // Surface terrains - default distribution
+    // Surface terrains - no Crystal on surface to encourage trading/exploration
     private val surfaceTerrains = listOf(
         TerrainType.LICHEN_FIELD,
         TerrainType.FUNGAL_FOREST,
         TerrainType.BASALT_QUARRY,
         TerrainType.IRON_VEIN,
-        TerrainType.CRYSTAL_GROTTO,
+        TerrainType.LICHEN_FIELD,
         TerrainType.BEETLE_FARM
     )
     
