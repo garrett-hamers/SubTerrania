@@ -153,7 +153,7 @@ object BoardGenerator {
         
         shuffledNumberMap = numberAssignment
         
-        // Secondary numbers from complementary range for better roll coverage
+        // Secondary numbers — avoid 7 (triggers Lucky 7 consolation) and 2/12 (too rare)
         val secondaryPool = listOf(3, 4, 5, 9, 10, 11).shuffled(random)
         shuffledSecondaryNumberMap = surfaceCoords.zip(secondaryPool).toMap()
     }

@@ -48,12 +48,13 @@ object GameEngine {
                 val resources = darkProducingTiles.mapNotNull { it.terrain.produces?.displayName() }.distinct()
                 return newState.addEvent("🌑 ${resources.joinToString(", ")} would produce if illuminated! Build a Lantern 🔦")
             }
-            // Auto-consolation: gain 1 random common resource on any dead roll
-            val commonResources = listOf(Resource.MYCELIUM, Resource.BASALT, Resource.CHITIN, Resource.LICHEN)
-            val bonus = commonResources.random()
-            var player = newState.currentPlayer
-            player = player.addResource(bonus, 1)
-            return newState.updatePlayer(player)
+            // Auto-consolation: gain 1 of the most-needed resource on any dead roll
+            // Pick the resource the player has least of (smarter than random)
+            val player = newState.currentPlayer
+            val allResources = Resource.entries
+            val bonus = allResources.minByOrNull { player.getResourceCount(it) } ?: Resource.MYCELIUM
+            var updatedPlayer = player.addResource(bonus, 1)
+            return newState.updatePlayer(updatedPlayer)
                 .copy(lastProduction = mapOf(bonus to 1))
                 .addEvent("🔍 Nothing produced — scavenged +1 ${bonus.displayName()}")
         }
@@ -275,6 +276,12 @@ object GameEngine {
         }
         val numberToken = if (terrain.produces != null) numberPool.random() else null
         
+        // Secondary number for Crust tiles — rewards early exploration
+        val secondaryNumberToken = if (terrain.produces != null && tile.zone == Zone.CRUST) {
+            val secondaryPool = listOf(3, 4, 5, 9, 10, 11)
+            secondaryPool.random()
+        } else null
+        
         // Generate exploration event based on zone and difficulty
         val event = generateExplorationEvent(tile.zone, difficulty)
         
@@ -288,6 +295,7 @@ object GameEngine {
             isRevealed = true,
             terrain = finalTerrain,
             numberToken = numberToken,
+            secondaryNumberToken = secondaryNumberToken,
             hasRubble = hasRubble,
             isIlluminated = isIlluminated
         )

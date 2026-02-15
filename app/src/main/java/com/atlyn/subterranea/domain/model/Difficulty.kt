@@ -183,9 +183,9 @@ enum class Difficulty(
      */
     val maxTurns: Int
         get() = when (this) {
-            EASY -> 30
-            NORMAL -> 25
-            HARD -> 20
-            NIGHTMARE -> 18
+            EASY -> 22
+            NORMAL -> 18
+            HARD -> 18
+            NIGHTMARE -> 20
         }
 }

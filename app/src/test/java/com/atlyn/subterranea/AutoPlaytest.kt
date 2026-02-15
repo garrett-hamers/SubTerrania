@@ -30,8 +30,8 @@ class AutoPlaytest {
             "Cautious Newbie",
             exploreVsBuildBias = 0.3,
             riskTolerance = 0.2,
-            tradePropensity = 0.1,
-            abilityAwareness = 0.2,
+            tradePropensity = 0.3,
+            abilityAwareness = 0.3,
             structureDiversity = 0.3,
             mistakeRate = 0.15,
             lanternPriority = 4
@@ -40,8 +40,8 @@ class AutoPlaytest {
             "Balanced Player",
             exploreVsBuildBias = 0.5,
             riskTolerance = 0.5,
-            tradePropensity = 0.4,
-            abilityAwareness = 0.6,
+            tradePropensity = 0.5,
+            abilityAwareness = 0.7,
             structureDiversity = 0.6,
             mistakeRate = 0.05,
             lanternPriority = 3
@@ -50,8 +50,8 @@ class AutoPlaytest {
             "Aggressive Explorer",
             exploreVsBuildBias = 0.8,
             riskTolerance = 0.9,
-            tradePropensity = 0.3,
-            abilityAwareness = 0.4,
+            tradePropensity = 0.4,
+            abilityAwareness = 0.5,
             structureDiversity = 0.4,
             mistakeRate = 0.08,
             lanternPriority = 2
@@ -60,7 +60,7 @@ class AutoPlaytest {
             "Builder/Optimizer",
             exploreVsBuildBias = 0.2,
             riskTolerance = 0.3,
-            tradePropensity = 0.7,
+            tradePropensity = 0.8,
             abilityAwareness = 0.9,
             structureDiversity = 0.8,
             mistakeRate = 0.03,
@@ -434,12 +434,15 @@ class AutoPlaytest {
             }
         }
 
-        // Step 1: If we WANT to build but can't afford, try trading first
-        val wantToBuild = lanternCount < profile.lanternPriority ||
-            StructureType.entries.any { it.victoryPoints >= 2 }
-        val canAffordAnything = buildActions.isNotEmpty()
+        // Step 1: Proactive trading — trade for rare resources or to unlock better structures
+        if (GameEngine.canTrade(state) && Math.random() < profile.tradePropensity) {
+            val tradeResult = tryTrade(state, profile, lanternCount)
+            if (tradeResult != null) return tradeResult
+        }
 
-        if (wantToBuild && !canAffordAnything && GameEngine.canTrade(state)) {
+        // Step 1b: If we WANT to build but can't afford, trade
+        val canAffordAnything = buildActions.isNotEmpty()
+        if (!canAffordAnything && GameEngine.canTrade(state)) {
             val tradeResult = tryTrade(state, profile, lanternCount)
             if (tradeResult != null) return tradeResult
         }
@@ -484,19 +487,23 @@ class AutoPlaytest {
     ): GameState? {
         if (exploreActions.isEmpty()) return null
 
+        // Pre-compute risk decision to avoid non-transitive comparison
+        val takesRisk = Math.random() < profile.riskTolerance
+        val jitter = (Math.random() * 2).toInt()
+
         val best = exploreActions.maxByOrNull { action ->
             val tile = state.board[action.location]
             val zoneScore = when (tile?.zone) {
                 Zone.SURFACE -> 1
                 Zone.CRUST -> 3
-                Zone.MANTLE -> if (Math.random() < profile.riskTolerance) 6 else 2
-                Zone.CORE -> if (Math.random() < profile.riskTolerance) 7 else 1
+                Zone.MANTLE -> if (takesRisk) 6 else 2
+                Zone.CORE -> if (takesRisk) 7 else 1
                 null -> 0
             }
             val illuminatedNeighbors = action.location.neighbors().count { n ->
                 state.board[n]?.isIlluminated == true
             }
-            zoneScore + illuminatedNeighbors + (Math.random() * 2).toInt() // slight randomness
+            zoneScore + illuminatedNeighbors + jitter
         }
         return if (best != null) GameEngine.exploreTile(state, best.location) else null
     }
@@ -526,14 +533,13 @@ class AutoPlaytest {
         }
 
         // Diverse builder: consider variety
+        val prefersDiversity = Math.random() < profile.structureDiversity
         val vpStructures = buildActions
             .filter { it.structureType != StructureType.LANTERN }
             .sortedByDescending { build ->
                 val vpScore = build.structureType.victoryPoints * 10
-                // Diversity bonus: prefer structures we haven't built yet
                 val alreadyBuilt = state.currentPlayer.structuresBuilt.count { it.type == build.structureType }
-                val diversityBonus = if (alreadyBuilt == 0 && Math.random() < profile.structureDiversity) 5 else 0
-                // Tile quality
+                val diversityBonus = if (alreadyBuilt == 0 && prefersDiversity) 5 else 0
                 val tile = state.board[build.location]
                 val tileScore = tile?.numberToken?.let {
                     when (it) { 6, 8 -> 3; 5, 9 -> 2; 7 -> 2; else -> 1 }
@@ -554,8 +560,7 @@ class AutoPlaytest {
         val tradable = GameEngine.getTradableResources(state)
         if (tradable.isEmpty()) return null
 
-        // What do we need most?
-        // Look at all structures we could build if we had the missing resource
+        // Strategy 1: Trade to afford a structure we're 1 resource short of
         for (type in StructureType.entries.sortedByDescending { it.victoryPoints }) {
             val cost = type.cost
             val missing = cost.filter { (res, amt) -> player.getResourceCount(res) < amt }
@@ -566,7 +571,22 @@ class AutoPlaytest {
             }
         }
 
-        // Need a lantern? Trade for it
+        // Strategy 2: Trade surplus common resources for rare ones we need
+        // Crystal is not on surface, so always valuable to trade for
+        val crystalCount = player.getResourceCount(Resource.CRYSTAL)
+        val ironCount = player.getResourceCount(Resource.IRON_ORE)
+        if (crystalCount == 0 && tradable.isNotEmpty()) {
+            val give = tradable.filter { it != Resource.CRYSTAL && it != Resource.IRON_ORE }.firstOrNull()
+                ?: tradable.firstOrNull { it != Resource.CRYSTAL }
+            if (give != null) return GameEngine.tradeResources(state, give, Resource.CRYSTAL)
+        }
+        if (ironCount == 0 && tradable.isNotEmpty()) {
+            val give = tradable.filter { it != Resource.IRON_ORE && it != Resource.CRYSTAL }.firstOrNull()
+                ?: tradable.firstOrNull { it != Resource.IRON_ORE }
+            if (give != null) return GameEngine.tradeResources(state, give, Resource.IRON_ORE)
+        }
+
+        // Strategy 3: Trade for lantern materials
         if (lanternCount < 3 && !player.canAfford(StructureType.LANTERN.cost)) {
             val needCrystal = player.getResourceCount(Resource.CRYSTAL) < 1
             val needIron = player.getResourceCount(Resource.IRON_ORE) < 1
