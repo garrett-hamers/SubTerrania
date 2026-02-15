@@ -35,36 +35,36 @@ enum class Difficulty(
     val startingResources: Map<Resource, Int>
         get() = when (this) {
             EASY -> mapOf(
-                Resource.MYCELIUM to 8,
-                Resource.BASALT to 8,
-                Resource.CHITIN to 8,
-                Resource.LICHEN to 8,
-                Resource.IRON_ORE to 6,
-                Resource.CRYSTAL to 6
-            )
-            NORMAL -> mapOf(
-                Resource.MYCELIUM to 6,
-                Resource.BASALT to 6,
-                Resource.CHITIN to 6,
-                Resource.LICHEN to 6,
-                Resource.IRON_ORE to 4,
-                Resource.CRYSTAL to 4
-            )
-            HARD -> mapOf(
                 Resource.MYCELIUM to 4,
                 Resource.BASALT to 4,
                 Resource.CHITIN to 4,
                 Resource.LICHEN to 4,
-                Resource.IRON_ORE to 1,  // Reduced from 2 - forces exploration
-                Resource.CRYSTAL to 1   // Reduced from 2 - forces exploration
+                Resource.IRON_ORE to 2,
+                Resource.CRYSTAL to 2
             )
-            NIGHTMARE -> mapOf(
+            NORMAL -> mapOf(
+                Resource.MYCELIUM to 3,
+                Resource.BASALT to 3,
+                Resource.CHITIN to 3,
+                Resource.LICHEN to 3,
+                Resource.IRON_ORE to 1,
+                Resource.CRYSTAL to 1
+            )
+            HARD -> mapOf(
                 Resource.MYCELIUM to 2,
                 Resource.BASALT to 2,
                 Resource.CHITIN to 2,
                 Resource.LICHEN to 2,
                 Resource.IRON_ORE to 1,
                 Resource.CRYSTAL to 1
+            )
+            NIGHTMARE -> mapOf(
+                Resource.MYCELIUM to 1,
+                Resource.BASALT to 1,
+                Resource.CHITIN to 1,
+                Resource.LICHEN to 1,
+                Resource.IRON_ORE to 0,
+                Resource.CRYSTAL to 0
             )
         }
     

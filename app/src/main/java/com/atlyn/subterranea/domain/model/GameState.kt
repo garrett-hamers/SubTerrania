@@ -65,37 +65,52 @@ data class GameState(
     fun getCurrentHint(): String? {
         if (!showTutorial) return null
         
-        // Calculate VP progress
-        val currentVP = currentPlayer.calculateVictoryPoints() + currentPlayer.victoryPoints
+        val currentVP = totalVPFor(currentPlayer)
+        val hasLantern = structures.any { it.type == StructureType.LANTERN && it.ownerId == currentPlayer.id }
+        val hasOutpost = structures.any { it.type == StructureType.OUTPOST && it.ownerId == currentPlayer.id }
+        val illuminatedCount = board.values.count { it.isRevealed && it.isIlluminated }
+        val revealedCount = board.values.count { it.isRevealed }
         
         return when {
             turnPhase == TurnPhase.ROLL_DICE -> "🎲 Tap 'Roll' to roll the dice and produce resources!"
-            
-            // First turn guidance
-            turnNumber == 1 && actionsThisTurn == 0 && turnPhase == TurnPhase.MAIN_ACTION -> 
-                "🔦 Tap on a dark tile next to revealed tiles to explore it!"
-            
-            // Building hints
-            actionsThisTurn == 0 && structures.isEmpty() && currentPlayer.canAfford(StructureType.LANTERN.cost) ->
-                "💡 Build a Lantern to reveal adjacent tiles and earn VP!"
-            
-            // After exploring
-            !canExploreThisTurn && actionsThisTurn < maxActionsPerTurn && selectedTile != null ->
-                "🏗️ Tap 'Build' to construct a structure on the selected tile."
-            !canExploreThisTurn && actionsThisTurn < maxActionsPerTurn ->
-                "🏗️ Select a revealed tile to build structures."
             
             // Out of actions
             actionsThisTurn >= maxActionsPerTurn ->
                 "➡️ You've used all actions. Tap 'End Turn' to continue."
             
-            // Progress hints
+            // Near victory
             currentVP >= victoryPointsToWin - 2 && currentVP < victoryPointsToWin ->
                 "🏆 Almost there! ${victoryPointsToWin - currentVP} VP to victory!"
             
+            // First turn - teach exploration
+            turnNumber <= 2 && actionsThisTurn == 0 && turnPhase == TurnPhase.MAIN_ACTION -> 
+                "🔦 Tap a dark tile next to revealed tiles to explore!"
+            
+            // No lanterns yet and can afford one - suggest building
+            !hasLantern && currentPlayer.canAfford(StructureType.LANTERN.cost) && turnPhase == TurnPhase.MAIN_ACTION ->
+                "💡 Build a Lantern to illuminate tiles and earn VP!"
+            
+            // Has lantern but no outpost - guide next step
+            hasLantern && !hasOutpost && currentPlayer.canAfford(StructureType.OUTPOST.cost) ->
+                "🏗️ Build an Outpost on a resource tile to earn VP!"
+                
+            // Few illuminated tiles — need more lanterns
+            hasLantern && illuminatedCount < 4 && currentPlayer.canAfford(StructureType.LANTERN.cost) ->
+                "💡 More Lanterns = more production. Place near unexplored areas!"
+            
+            // After exploring — suggest building
+            !canExploreThisTurn && actionsThisTurn < maxActionsPerTurn && selectedTile != null ->
+                "🏗️ Tap 'Build' to construct a structure on the selected tile."
+            !canExploreThisTurn && actionsThisTurn < maxActionsPerTurn ->
+                "🏗️ Select a revealed tile to build, or trade resources."
+            
+            // Mid-game variety
+            revealedCount > 10 && turnPhase == TurnPhase.MAIN_ACTION ->
+                "⛏️ Deeper zones have rarer resources but more hazards!"
+            
             // General exploration tip
             canExploreThisTurn && turnPhase == TurnPhase.MAIN_ACTION ->
-                "🔦 Explore deeper for better resources! Darker tiles have rarer rewards."
+                "🔦 Explore to reveal tiles and find resources!"
             
             else -> null
         }

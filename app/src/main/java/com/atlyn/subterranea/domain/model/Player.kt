@@ -101,8 +101,8 @@ enum class StructureType(
     LANTERN(
         displayName = "Lantern Post",
         cost = mapOf(Resource.CRYSTAL to 1, Resource.IRON_ORE to 1),
-        victoryPoints = 0,
-        description = "Illuminates adjacent tiles, required for production",
+        victoryPoints = 1,
+        description = "Illuminates adjacent tiles for production (+1 VP)",
         ability = StructureAbility.FLARE
     ),
     OUTPOST(

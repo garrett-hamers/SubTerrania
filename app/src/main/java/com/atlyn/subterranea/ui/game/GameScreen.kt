@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -40,6 +41,9 @@ fun GameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    
+    // End turn confirmation dialog state
+    var showEndTurnConfirm by remember { mutableStateOf(false) }
     
     // Sound manager - remember and handle lifecycle
     val soundManager = remember { SoundManager(context) }
@@ -215,7 +219,14 @@ fun GameScreen(
             uiState = uiState,
             explorableTiles = explorableTiles,
             onRollDice = { viewModel.rollDice() },
-            onEndTurn = { viewModel.endTurn() },
+            onEndTurn = {
+                val actionsLeft = uiState.maxActionsPerTurn - uiState.actionsThisTurn
+                if (actionsLeft > 0 && uiState.turnPhase == TurnPhase.MAIN_ACTION) {
+                    showEndTurnConfirm = true
+                } else {
+                    viewModel.endTurn()
+                }
+            },
             onBuildClick = { viewModel.toggleBuildMenu() },
             onExploreClick = { viewModel.exploreSelectedTile() },
             onClearRubble = { viewModel.clearRubble() },
@@ -267,16 +278,14 @@ fun GameScreen(
             )
         }
         
-        // Event log (bottom strip) - hide when dialogs are open
-        if (!uiState.showBuildMenu && !showTradeMenu && uiState.lastExplorationEvent == null) {
-            EventLog(
-                events = uiState.eventLog,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 170.dp, start = 8.dp, end = 8.dp)
-                    .fillMaxWidth()
-            )
-        }
+        // Event log (bottom strip) - always visible for context
+        EventLog(
+            events = uiState.eventLog,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 170.dp, start = 8.dp, end = 8.dp)
+                .fillMaxWidth()
+        )
         
         // Exploration event popup with backdrop
         if (uiState.lastExplorationEvent != null && 
@@ -307,6 +316,33 @@ fun GameScreen(
             ConsolationChoiceCard(
                 onChoice = { choice -> viewModel.handleConsolationChoice(choice) },
                 modifier = Modifier.align(Alignment.Center)
+            )
+        }
+        
+        // End turn confirmation dialog
+        if (showEndTurnConfirm) {
+            val actionsLeft = uiState.maxActionsPerTurn - uiState.actionsThisTurn
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showEndTurnConfirm = false },
+                title = { Text("End Turn?", color = Color.White) },
+                text = { 
+                    Text(
+                        "You still have $actionsLeft action${if (actionsLeft > 1) "s" else ""} remaining!\n\nYou can explore tiles, build structures, or trade resources.",
+                        color = Color(0xFFB0BEC5)
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { showEndTurnConfirm = false; viewModel.endTurn() }
+                    ) { Text("End Turn", color = Color(0xFFFF9800)) }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(
+                        onClick = { showEndTurnConfirm = false }
+                    ) { Text("Keep Playing", color = Color(0xFF00BCD4)) }
+                },
+                containerColor = Color(0xFF1A1A2E),
+                titleContentColor = Color.White
             )
         }
         
@@ -870,38 +906,21 @@ fun BuildMenu(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             
-            if (availableStructures.isEmpty()) {
-                // Show specific reason why building isn't possible
-                val reason = getBuildFailureReason(player, uiState = null)
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "❌ Cannot Build Here",
-                        color = Color(0xFFFF6B6B),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+            // Show all structure types, highlighting which are available
+            val allTypes = StructureType.entries.toList()
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(allTypes) { type ->
+                    val isAvailable = type in availableStructures
+                    val canAfford = player.canAfford(type.cost)
+                    StructureCard(
+                        structureType = type,
+                        player = player,
+                        canAfford = canAfford,
+                        isAvailable = isAvailable,
+                        onClick = { if (isAvailable) onBuild(type) }
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        reason,
-                        color = Color(0xFF607D8B),
-                        textAlign = TextAlign.Center,
-                        fontSize = 13.sp
-                    )
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(availableStructures) { type ->
-                        StructureCard(
-                            structureType = type,
-                            canAfford = player.canAfford(type.cost),
-                            onClick = { onBuild(type) }
-                        )
-                    }
                 }
             }
         }
@@ -911,15 +930,19 @@ fun BuildMenu(
 @Composable
 fun StructureCard(
     structureType: StructureType,
+    player: Player,
     canAfford: Boolean,
+    isAvailable: Boolean,
     onClick: () -> Unit
 ) {
+    val enabled = canAfford && isAvailable
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = canAfford, onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick)
+            .then(if (!enabled) Modifier.alpha(0.6f) else Modifier),
         colors = CardDefaults.cardColors(
-            containerColor = if (canAfford) Color(0xFF2D2D44) else Color(0xFF1A1A1A)
+            containerColor = if (enabled) Color(0xFF2D2D44) else Color(0xFF1A1A1A)
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -929,7 +952,7 @@ fun StructureCard(
             ) {
                 Text(
                     structureType.displayName,
-                    color = if (canAfford) Color.White else Color.Gray,
+                    color = if (enabled) Color.White else Color.Gray,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -946,9 +969,11 @@ fun StructureCard(
             
             Spacer(Modifier.height(4.dp))
             
-            // Cost display
+            // Cost display with affordability per resource
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 structureType.cost.forEach { (resource, amount) ->
+                    val have = player.getResourceCount(resource)
+                    val enough = have >= amount
                     val emoji = when (resource) {
                         Resource.MYCELIUM -> "🍄"
                         Resource.BASALT -> "🧱"
@@ -960,9 +985,35 @@ fun StructureCard(
                     Text(
                         "$emoji$amount",
                         fontSize = 12.sp,
-                        color = Color.White
+                        color = if (enough) Color(0xFF4CAF50) else Color(0xFFFF6B6B)
                     )
                 }
+            }
+            
+            // Show what's missing if can't afford
+            if (!canAfford) {
+                val missing = structureType.cost.mapNotNull { (resource, needed) ->
+                    val have = player.getResourceCount(resource)
+                    if (have < needed) "Need ${needed - have} more ${resource.displayName()}" else null
+                }
+                if (missing.isNotEmpty()) {
+                    Text(
+                        missing.joinToString(", "),
+                        color = Color(0xFFFF6B6B),
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+            
+            // Show if not available on this tile
+            if (canAfford && !isAvailable) {
+                Text(
+                    if (structureType == StructureType.EXCAVATOR) "Requires Outpost on tile" else "Cannot build here",
+                    color = Color(0xFFFF9800),
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
         }
     }

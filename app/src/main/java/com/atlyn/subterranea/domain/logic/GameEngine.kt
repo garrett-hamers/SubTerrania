@@ -48,7 +48,14 @@ object GameEngine {
                 val resources = darkProducingTiles.mapNotNull { it.terrain.produces?.displayName() }.distinct()
                 return newState.addEvent("🌑 ${resources.joinToString(", ")} would produce if illuminated! Build a Lantern 🔦")
             }
-            return newState.addEvent("No tiles produce on ${diceResult.total}.")
+            // Auto-consolation: gain 1 random common resource on any dead roll
+            val commonResources = listOf(Resource.MYCELIUM, Resource.BASALT, Resource.CHITIN, Resource.LICHEN)
+            val bonus = commonResources.random()
+            var player = newState.currentPlayer
+            player = player.addResource(bonus, 1)
+            return newState.updatePlayer(player)
+                .copy(lastProduction = mapOf(bonus to 1))
+                .addEvent("🔍 Nothing produced — scavenged +1 ${bonus.displayName()}")
         }
         
         // Track total production for display
