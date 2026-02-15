@@ -291,12 +291,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onTileClicked(coord: HexCoordinate) {
-        println("TILE_CLICK: coord=$coord, currentPhase=${_uiState.value.turnPhase}")
+        Log.d(TAG, "TILE_CLICK: coord=$coord, phase=${_uiState.value.turnPhase}")
         val wasExplored = _uiState.value.board[coord]?.isRevealed == false
         
         _uiState.update { state ->
             val tile = state.board[coord]
-            println("TILE_CLICK: tile exists=${tile != null}")
+            Log.d(TAG, "TILE_CLICK: tile exists=${tile != null}")
             if (tile == null) return@update state
             
             // If in main action phase and tile is not revealed, try to explore
@@ -304,7 +304,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 if (state.canExploreThisTurn && state.actionsThisTurn < state.maxActionsPerTurn) {
                     // Safety check: Must be selected first to explore (or use Explore button)
                     if (state.selectedTile == coord) {
-                        println("TILE_CLICK: Exploring tile")
+                        Log.d(TAG, "TILE_CLICK: Exploring tile")
                         return@update GameEngine.exploreTile(state, coord).copy(
                             selectedTile = coord,
                             showBuildMenu = false
@@ -314,7 +314,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             }
             
             // Otherwise just select the tile
-            println("TILE_CLICK: Selecting tile $coord")
+            Log.d(TAG, "TILE_CLICK: Selecting tile $coord")
             state.copy(
                 selectedTile = coord,
                 showBuildMenu = false
@@ -348,9 +348,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun rollDice() {
-        println("ROLL_DICE: called, currentPhase=${_uiState.value.turnPhase}")
+        Log.d(TAG, "ROLL_DICE: called, phase=${_uiState.value.turnPhase}")
         if (_uiState.value.turnPhase != TurnPhase.ROLL_DICE) {
-            println("ROLL_DICE: wrong phase")
+            Log.d(TAG, "ROLL_DICE: wrong phase")
             return
         }
         
@@ -360,7 +360,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         
         _uiState.update { currentState ->
             val result = GameEngine.rollDiceAndProduce(currentState)
-            println("ROLL_DICE: rolled ${result.lastDiceResult}")
+            Log.d(TAG, "ROLL_DICE: rolled ${result.lastDiceResult}")
             result
         }
         
@@ -380,10 +380,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun buildStructure(structureType: StructureType) {
         val state = _uiState.value
         val location = state.selectedTile
-        println("BUILD: type=$structureType, location=$location")
+        Log.d(TAG, "BUILD: type=$structureType, location=$location")
         
         if (location == null) {
-            println("BUILD FAILED: No tile selected!")
+            Log.d(TAG, "BUILD: No tile selected!")
             playSound(GameSound.ERROR)
             return
         }
@@ -392,7 +392,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         
         _uiState.update { currentState ->
             val result = GameEngine.buildStructure(currentState, structureType, location)
-            println("BUILD RESULT: structures=${result.structures.size}, VP=${result.currentPlayer.calculateVictoryPoints()}, gameOver=${result.gameOver}")
+            Log.d(TAG, "BUILD: structures=${result.structures.size}, VP=${result.currentPlayer.calculateVictoryPoints()}")
             result.copy(showBuildMenu = false, selectedTile = null)
         }
         
@@ -411,7 +411,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     
     fun toggleBuildMenu() {
         val state = _uiState.value
-        println("TOGGLE_BUILD: selectedTile=${state.selectedTile}, phase=${state.turnPhase}, actions=${state.actionsThisTurn}/${state.maxActionsPerTurn}")
+        Log.d(TAG, "TOGGLE_BUILD: tile=${state.selectedTile}, actions=${state.actionsThisTurn}/${state.maxActionsPerTurn}")
         playSound(GameSound.BUTTON_TAP)
         _uiState.update { it.copy(showBuildMenu = !it.showBuildMenu) }
     }
@@ -488,7 +488,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         Log.d(TAG, "Existing structure: $existingStructure")
         
         val available = StructureType.entries.filter { type ->
-            val canAfford = player.canAfford(type.cost)
+            val adjustedCost = GameEngine.getAdjustedBuildCost(type, state.difficulty, state.selectedCharacter)
+            val canAfford = player.canAfford(adjustedCost)
             val canPlace = when {
                 type == StructureType.EXCAVATOR -> existingStructure?.type == StructureType.OUTPOST
                 existingStructure != null -> false

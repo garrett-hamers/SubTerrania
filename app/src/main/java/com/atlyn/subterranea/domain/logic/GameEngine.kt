@@ -213,7 +213,18 @@ object GameEngine {
             newState = newState.addEvent("🏆 Achievement: Deep Delver!")
         }
         
-        return newState.updatePlayer(player).let { checkVictory(it) }
+        newState = newState.updatePlayer(player)
+        
+        // Check for interactive event in deeper zones
+        val interactiveEvent = maybeGenerateInteractiveEvent(newState, coord)
+        if (interactiveEvent != null) {
+            newState = newState.copy(
+                pendingInteractiveEvent = interactiveEvent,
+                pendingEventCoord = coord
+            )
+        }
+        
+        return checkVictory(newState)
     }
     
     /**
@@ -282,8 +293,8 @@ object GameEngine {
             secondaryPool.random()
         } else null
         
-        // Generate exploration event based on zone and difficulty
-        val event = generateExplorationEvent(tile.zone, difficulty)
+        // Generate exploration event based on zone, difficulty, and map preset
+        val event = generateExplorationEvent(tile.zone, difficulty, tile.presetHint)
         
         val hasRubble = event is ExplorationEvent.CaveIn
         val isMagma = event is ExplorationEvent.MagmaBurst
@@ -303,9 +314,19 @@ object GameEngine {
         return Pair(newTile, event)
     }
     
-    private fun generateExplorationEvent(zone: Zone, difficulty: Difficulty = Difficulty.NORMAL): ExplorationEvent {
+    private fun generateExplorationEvent(zone: Zone, difficulty: Difficulty = Difficulty.NORMAL, presetHint: String? = null): ExplorationEvent {
         val roll = (1..100).random()
-        val hazardChance = (difficulty.hazardChance * 100).toInt()
+        var hazardChance = (difficulty.hazardChance * 100).toInt()
+        
+        // Map preset modifiers
+        when (presetHint) {
+            "hazardous" -> hazardChance = minOf(90, hazardChance + 20)
+            "crystal_rich" -> if (roll <= 15 && zone != Zone.SURFACE) return ExplorationEvent.CrystalVein()
+            "iron_rich" -> if (roll <= 10 && zone != Zone.SURFACE) return ExplorationEvent.TreasureCache(
+                mapOf(Resource.IRON_ORE to 2, Resource.BASALT to 1)
+            )
+            "organic_rich" -> if (roll <= 15) return if ((1..2).random() == 1) ExplorationEvent.FungalBloom() else ExplorationEvent.BeetleNest()
+        }
         
         // First, check for hazard based on difficulty (higher difficulty = more hazards)
         val hazardRoll = (1..100).random()
@@ -471,7 +492,10 @@ object GameEngine {
             }
         }
         
-        if (!player.canAfford(structureType.cost)) {
+        // Apply difficulty cost multiplier and character discounts
+        val adjustedCost = getAdjustedBuildCost(structureType, state.difficulty, state.selectedCharacter)
+        
+        if (!player.canAfford(adjustedCost)) {
             return state.addEvent("❌ Cannot afford ${structureType.displayName}")
         }
         
@@ -485,7 +509,7 @@ object GameEngine {
         }
         newStructures.add(structure)
         
-        var newPlayer = player.removeResources(structureType.cost)
+        var newPlayer = player.removeResources(adjustedCost)
             .copy(structuresBuilt = player.structuresBuilt + structure)
         
         var newState = state.copy(
@@ -511,6 +535,27 @@ object GameEngine {
         }
         
         return newState.updatePlayer(newPlayer).let { checkVictory(it) }
+    }
+    
+    /**
+     * Calculate adjusted build cost based on difficulty multiplier and character discount
+     */
+    fun getAdjustedBuildCost(
+        structureType: StructureType,
+        difficulty: Difficulty,
+        character: GameCharacter
+    ): Map<Resource, Int> {
+        val multiplier = difficulty.buildCostMultiplier
+        val rareDiscount = character.structureRareDiscount()
+        val rareResources = setOf(Resource.IRON_ORE, Resource.CRYSTAL)
+        
+        return structureType.cost.mapValues { (resource, baseCost) ->
+            var adjusted = kotlin.math.ceil(baseCost * multiplier).toInt()
+            if (resource in rareResources) {
+                adjusted = maxOf(0, adjusted - rareDiscount)
+            }
+            maxOf(0, adjusted)
+        }.filter { it.value > 0 } // Remove zero-cost entries
     }
     
     private fun illuminateAdjacentTiles(state: GameState, center: HexCoordinate): GameState {
@@ -700,7 +745,8 @@ object GameEngine {
         val result = mutableMapOf<StructureType, MutableList<HexCoordinate>>()
         
         StructureType.entries.forEach { type ->
-            if (player.canAfford(type.cost)) {
+            val adjustedCost = getAdjustedBuildCost(type, state.difficulty, state.selectedCharacter)
+            if (player.canAfford(adjustedCost)) {
                 result[type] = mutableListOf()
                 
                 state.board.values.filter { tile ->

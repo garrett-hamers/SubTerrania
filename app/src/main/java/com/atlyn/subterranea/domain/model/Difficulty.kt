@@ -139,10 +139,10 @@ enum class Difficulty(
      */
     val buildCostMultiplier: Float
         get() = when (this) {
-            EASY -> 0.75f    // 25% cheaper
+            EASY -> 0.8f     // 20% cheaper
             NORMAL -> 1.0f
-            HARD -> 1.25f    // 25% more expensive
-            NIGHTMARE -> 1.5f // 50% more expensive
+            HARD -> 1.0f     // Same cost, harder through other mechanics
+            NIGHTMARE -> 1.2f // 20% more expensive
         }
     
     /**
@@ -186,6 +186,6 @@ enum class Difficulty(
             EASY -> 22
             NORMAL -> 18
             HARD -> 18
-            NIGHTMARE -> 20
+            NIGHTMARE -> 22
         }
 }
