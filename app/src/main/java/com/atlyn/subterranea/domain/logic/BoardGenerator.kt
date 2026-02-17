@@ -34,12 +34,7 @@ object BoardGenerator {
                 val coord = HexCoordinate(q, r)
                 val dist = coord.distanceTo(HexCoordinate(0, 0))
                 
-                val zone = when(dist) {
-                    0, 1 -> Zone.SURFACE
-                    2 -> Zone.CRUST
-                    3 -> Zone.MANTLE
-                    else -> Zone.CORE
-                }
+                val zone = Zone.fromDistance(dist)
                 
                 // Assign tiles
                 val tile = if (zone == Zone.SURFACE) {
@@ -166,10 +161,10 @@ object BoardGenerator {
     ): HexTile {
         // Store preset hint for exploration event generation
         val presetHint = when (preset) {
-            MapPreset.CRYSTAL_CAVES -> "crystal_rich"
-            MapPreset.IRON_DEPTHS -> "iron_rich"
-            MapPreset.FUNGAL_JUNGLE -> "organic_rich"
-            MapPreset.VOLCANIC_CORE -> "hazardous"
+            MapPreset.CRYSTAL_CAVES -> MapPresetHint.CRYSTAL_RICH
+            MapPreset.IRON_DEPTHS -> MapPresetHint.IRON_RICH
+            MapPreset.FUNGAL_JUNGLE -> MapPresetHint.ORGANIC_RICH
+            MapPreset.VOLCANIC_CORE -> MapPresetHint.HAZARDOUS
             else -> null
         }
         

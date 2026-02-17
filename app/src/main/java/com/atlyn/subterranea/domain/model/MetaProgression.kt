@@ -213,8 +213,29 @@ enum class MapPreset(
 /**
  * Exploration event choices for interactive events
  */
+enum class InteractiveChoiceId(val wireId: String) {
+    FIGHT("fight"),
+    SNEAK("sneak"),
+    RETREAT("retreat"),
+    CAREFUL("careful"),
+    RUSH("rush"),
+    REINFORCE("reinforce"),
+    OPEN("open"),
+    STUDY("study"),
+    LEAVE("leave"),
+    RESCUE("rescue"),
+    TRADE("trade"),
+    DIRECTIONS("directions");
+
+    companion object {
+        fun fromWireId(wireId: String): InteractiveChoiceId? {
+            return entries.find { it.wireId == wireId }
+        }
+    }
+}
+
 data class EventChoice(
-    val id: String,
+    val id: InteractiveChoiceId,
     val displayText: String,
     val emoji: String,
     val description: String
@@ -232,9 +253,9 @@ sealed class InteractiveEvent {
         override val title: String = "Beetle Swarm Detected!",
         override val description: String = "A swarm of cave beetles blocks your path.",
         override val choices: List<EventChoice> = listOf(
-            EventChoice("fight", "Fight", "⚔️", "50% chance: gain 3 Chitin, or lose 1 action"),
-            EventChoice("sneak", "Sneak Past", "🤫", "Safe, but tile marked as Infested"),
-            EventChoice("retreat", "Retreat", "🏃", "Keep your action, don't explore")
+            EventChoice(InteractiveChoiceId.FIGHT, "Fight", "⚔️", "50% chance: gain 3 Chitin, or lose 1 action"),
+            EventChoice(InteractiveChoiceId.SNEAK, "Sneak Past", "🤫", "Safe, but tile marked as Infested"),
+            EventChoice(InteractiveChoiceId.RETREAT, "Retreat", "🏃", "Keep your action, don't explore")
         )
     ) : InteractiveEvent()
     
@@ -242,9 +263,9 @@ sealed class InteractiveEvent {
         override val title: String = "Unstable Ground!",
         override val description: String = "The floor here looks dangerous.",
         override val choices: List<EventChoice> = listOf(
-            EventChoice("careful", "Proceed Carefully", "🚶", "Explore safely but costs 2 actions"),
-            EventChoice("rush", "Rush Through", "🏃", "Normal explore, 30% chance of cave-in"),
-            EventChoice("reinforce", "Reinforce", "🏗️", "Spend 2 Basalt to make tile safe")
+            EventChoice(InteractiveChoiceId.CAREFUL, "Proceed Carefully", "🚶", "Explore safely but costs 2 actions"),
+            EventChoice(InteractiveChoiceId.RUSH, "Rush Through", "🏃", "Normal explore, 30% chance of cave-in"),
+            EventChoice(InteractiveChoiceId.REINFORCE, "Reinforce", "🏗️", "Spend 2 Basalt to make tile safe")
         )
     ) : InteractiveEvent()
     
@@ -252,9 +273,9 @@ sealed class InteractiveEvent {
         override val title: String = "Ancient Cache Found!",
         override val description: String = "You discover a sealed container.",
         override val choices: List<EventChoice> = listOf(
-            EventChoice("open", "Open It", "📦", "Random reward: resources, artifact, or trap"),
-            EventChoice("study", "Study First", "🔍", "Learn contents, can still open next turn"),
-            EventChoice("leave", "Leave It", "🚫", "Play it safe, no reward")
+            EventChoice(InteractiveChoiceId.OPEN, "Open It", "📦", "Random reward: resources, artifact, or trap"),
+            EventChoice(InteractiveChoiceId.STUDY, "Study First", "🔍", "Learn contents, can still open next turn"),
+            EventChoice(InteractiveChoiceId.LEAVE, "Leave It", "🚫", "Play it safe, no reward")
         )
     ) : InteractiveEvent()
     
@@ -262,9 +283,9 @@ sealed class InteractiveEvent {
         override val title: String = "Lost Miner Found!",
         override val description: String = "A stranded miner needs help.",
         override val choices: List<EventChoice> = listOf(
-            EventChoice("rescue", "Rescue", "🤝", "Gain extra exploration this turn"),
-            EventChoice("trade", "Trade Supplies", "🔄", "Give 2 Lichen, gain 1 Iron"),
-            EventChoice("directions", "Give Directions", "👆", "They leave, 25% chance they return with gift")
+            EventChoice(InteractiveChoiceId.RESCUE, "Rescue", "🤝", "Gain extra exploration this turn"),
+            EventChoice(InteractiveChoiceId.TRADE, "Trade Supplies", "🔄", "Give 2 Lichen, gain 1 Iron"),
+            EventChoice(InteractiveChoiceId.DIRECTIONS, "Give Directions", "👆", "They leave, 25% chance they return with gift")
         )
     ) : InteractiveEvent()
 }

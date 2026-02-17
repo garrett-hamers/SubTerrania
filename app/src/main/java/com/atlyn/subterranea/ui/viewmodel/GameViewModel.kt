@@ -19,6 +19,8 @@ private const val PREFS_NAME = "subterranea_meta"
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(GameState())
     val uiState: StateFlow<GameState> = _uiState.asStateFlow()
+    private val _gameUIState = MutableStateFlow(GameUIState())
+    val gameUIState: StateFlow<GameUIState> = _gameUIState.asStateFlow()
     
     // Trade menu state
     private val _showTradeMenu = MutableStateFlow(false)
@@ -83,7 +85,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        // Don't initialize game yet - wait for difficulty selection
+        _fastModeEnabled.value = _metaProgression.value.fastModeEnabled
+        _gameUIState.value = _gameUIState.value.copy(fastModeEnabled = _fastModeEnabled.value)
     }
     
     // Character selection
@@ -123,6 +126,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     // Fast mode toggle
     fun toggleFastMode() {
         _fastModeEnabled.value = !_fastModeEnabled.value
+        _gameUIState.update { it.copy(fastModeEnabled = _fastModeEnabled.value) }
         _metaProgression.update { it.copy(fastModeEnabled = _fastModeEnabled.value) }
         saveMetaProgression(_metaProgression.value)
         playSound(GameSound.BUTTON_TAP)
@@ -169,9 +173,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         // Modify max actions based on character
         val maxActions = character.modifyMaxActions(difficulty.maxActionsPerTurn)
         
-        // Can explore multiple times?
-        val canExploreMultiple = character.canExploreMultiple() || difficulty.multipleExploresPerTurn
-        
         val player = Player(
             id = 0, 
             name = character.displayName,
@@ -185,16 +186,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 difficulty = difficulty,
                 maxActionsPerTurn = maxActions,
                 victoryPointsToWin = difficulty.victoryPointsToWin,
-                showTutorial = difficulty.showTutorial,
                 selectedCharacter = character,
-                fastModeEnabled = _fastModeEnabled.value,
-                mapPreset = mapPreset,
-                bonusActionsFirstTurn = bonuses.bonusActionsFirstTurn,
-                firstStructureDiscount = bonuses.structureDiscount
+                mapPreset = mapPreset
             ).addEvent("🎮 Game started on ${difficulty.emoji} ${difficulty.displayName}!")
              .addEvent("${character.emoji} Playing as ${character.displayName}")
              .addEvent("💡 Tip: Build a Lantern to light up dark tiles!")
         }
+        _gameUIState.value = GameUIState(
+            showTutorial = difficulty.showTutorial,
+            fastModeEnabled = _fastModeEnabled.value
+        )
     }
     
     fun resetGame() {
@@ -207,6 +208,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _diceRollTrigger.value = 0L
         _productionTrigger.value = 0L
         _buildTrigger.value = 0L
+        _gameUIState.value = GameUIState(fastModeEnabled = _fastModeEnabled.value)
         _uiState.value = GameState() // Use .value instead of update to force complete reset
     }
     
@@ -255,7 +257,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Handle interactive event choice
      */
-    fun handleEventChoice(choiceId: String) {
+    fun handleEventChoice(choiceId: InteractiveChoiceId) {
         val state = _uiState.value
         val event = state.pendingInteractiveEvent ?: return
         val coord = state.pendingEventCoord ?: return
@@ -291,39 +293,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onTileClicked(coord: HexCoordinate) {
-        Log.d(TAG, "TILE_CLICK: coord=$coord, phase=${_uiState.value.turnPhase}")
-        val wasExplored = _uiState.value.board[coord]?.isRevealed == false
-        
-        _uiState.update { state ->
-            val tile = state.board[coord]
-            Log.d(TAG, "TILE_CLICK: tile exists=${tile != null}")
-            if (tile == null) return@update state
-            
-            // If in main action phase and tile is not revealed, try to explore
-            if (state.turnPhase == TurnPhase.MAIN_ACTION && !tile.isRevealed) {
-                if (state.canExploreThisTurn && state.actionsThisTurn < state.maxActionsPerTurn) {
-                    // Safety check: Must be selected first to explore (or use Explore button)
-                    if (state.selectedTile == coord) {
-                        Log.d(TAG, "TILE_CLICK: Exploring tile")
-                        return@update GameEngine.exploreTile(state, coord).copy(
-                            selectedTile = coord,
-                            showBuildMenu = false
-                        )
-                    }
-                }
-            }
-            
-            // Otherwise just select the tile
+        val state = _uiState.value
+        val tile = state.board[coord] ?: return
+        val uiState = _gameUIState.value
+        val wasUnrevealed = !tile.isRevealed
+
+        Log.d(TAG, "TILE_CLICK: coord=$coord, phase=${state.turnPhase}")
+
+        val shouldExplore = state.turnPhase == TurnPhase.MAIN_ACTION &&
+            !tile.isRevealed &&
+            state.canExploreThisTurn &&
+            state.actionsThisTurn < state.maxActionsPerTurn &&
+            uiState.selectedTile == coord
+
+        if (shouldExplore) {
+            Log.d(TAG, "TILE_CLICK: Exploring tile")
+            _uiState.update { currentState -> GameEngine.exploreTile(currentState, coord) }
+        } else {
             Log.d(TAG, "TILE_CLICK: Selecting tile $coord")
-            state.copy(
-                selectedTile = coord,
-                showBuildMenu = false
-            )
         }
-        
-        // Play appropriate sound
+
+        _gameUIState.update { it.copy(selectedTile = coord, showBuildMenu = false) }
+
         val newTile = _uiState.value.board[coord]
-        if (wasExplored && newTile?.isRevealed == true) {
+        if (wasUnrevealed && newTile?.isRevealed == true) {
             playSound(GameSound.EXPLORE)
         } else {
             playSound(GameSound.TILE_SELECT)
@@ -332,17 +325,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun exploreSelectedTile() {
         val state = _uiState.value
-        val coord = state.selectedTile ?: return
+        val coord = _gameUIState.value.selectedTile ?: return
         val tile = state.board[coord] ?: return
         
         if (state.turnPhase == TurnPhase.MAIN_ACTION && !tile.isRevealed) {
              if (state.canExploreThisTurn && state.actionsThisTurn < state.maxActionsPerTurn) {
                 playSound(GameSound.EXPLORE)
                 _uiState.update { currentState ->
-                    GameEngine.exploreTile(currentState, coord).copy(
-                        showBuildMenu = false
-                    )
+                    GameEngine.exploreTile(currentState, coord)
                 }
+                _gameUIState.update { it.copy(showBuildMenu = false) }
              }
         }
     }
@@ -378,8 +370,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun buildStructure(structureType: StructureType) {
-        val state = _uiState.value
-        val location = state.selectedTile
+        val location = _gameUIState.value.selectedTile
         Log.d(TAG, "BUILD: type=$structureType, location=$location")
         
         if (location == null) {
@@ -393,8 +384,9 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { currentState ->
             val result = GameEngine.buildStructure(currentState, structureType, location)
             Log.d(TAG, "BUILD: structures=${result.structures.size}, VP=${result.currentPlayer.calculateVictoryPoints()}")
-            result.copy(showBuildMenu = false, selectedTile = null)
+            result
         }
+        _gameUIState.update { it.copy(showBuildMenu = false, selectedTile = null) }
         
         // Play sound if structure was actually built
         if (_uiState.value.structures.size > previousStructureCount) {
@@ -411,9 +403,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     
     fun toggleBuildMenu() {
         val state = _uiState.value
-        Log.d(TAG, "TOGGLE_BUILD: tile=${state.selectedTile}, actions=${state.actionsThisTurn}/${state.maxActionsPerTurn}")
+        val uiState = _gameUIState.value
+        Log.d(TAG, "TOGGLE_BUILD: tile=${uiState.selectedTile}, actions=${state.actionsThisTurn}/${state.maxActionsPerTurn}")
         playSound(GameSound.BUTTON_TAP)
-        _uiState.update { it.copy(showBuildMenu = !it.showBuildMenu) }
+        _gameUIState.update { it.copy(showBuildMenu = !it.showBuildMenu) }
     }
     
     // Trading functions
@@ -434,8 +427,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun getTradableResources(): List<Resource> = GameEngine.getTradableResources(_uiState.value)
     
     fun clearRubble() {
-        val state = _uiState.value
-        val location = state.selectedTile ?: return
+        val location = _gameUIState.value.selectedTile ?: return
         
         playSound(GameSound.BUILD_STRUCTURE)
         _uiState.update { currentState ->
@@ -448,6 +440,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { currentState ->
             GameEngine.endTurn(currentState)
         }
+        _gameUIState.update { it.copy(selectedTile = null, showBuildMenu = false) }
     }
     
     fun useStructureAbility(location: HexCoordinate) {
@@ -468,7 +461,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun getAvailableStructures(): List<StructureType> {
         val state = _uiState.value
         val player = state.currentPlayer
-        val location = state.selectedTile
+        val location = _gameUIState.value.selectedTile
         Log.d(TAG, "getAvailableStructures: selectedTile=$location")
         
         if (location == null) return emptyList()

@@ -9,7 +9,7 @@ data class HexTile(
     val secondaryNumberToken: Int? = null, // Surface tiles produce on either number
     val hasRubble: Boolean = false,
     val isIlluminated: Boolean = false,
-    val presetHint: String? = null // Used for map preset event generation
+    val presetHint: MapPresetHint? = null // Used for map preset event generation
 ) {
     fun produce(): Resource? {
         if (!isRevealed || hasRubble || !isIlluminated) return null
@@ -19,6 +19,13 @@ data class HexTile(
     fun matchesRoll(diceTotal: Int): Boolean {
         return numberToken == diceTotal || secondaryNumberToken == diceTotal
     }
+}
+
+enum class MapPresetHint {
+    CRYSTAL_RICH,
+    IRON_RICH,
+    ORGANIC_RICH,
+    HAZARDOUS
 }
 
 enum class TerrainType(val produces: Resource?) {

@@ -140,7 +140,6 @@ class AutoPlaytest {
             difficulty = difficulty,
             maxActionsPerTurn = maxActions,
             victoryPointsToWin = difficulty.victoryPointsToWin,
-            showTutorial = false,
             selectedCharacter = character,
             mapPreset = MapPreset.STANDARD
         )
@@ -413,28 +412,28 @@ class AutoPlaytest {
         }
     }
 
-    private fun pickInteractiveEventChoice(event: InteractiveEvent, profile: PlayerProfile): String {
+    private fun pickInteractiveEventChoice(event: InteractiveEvent, profile: PlayerProfile): InteractiveChoiceId {
         // Choose based on risk tolerance
         return when (event) {
             is InteractiveEvent.BeetleSwarm -> when {
-                profile.riskTolerance > 0.6 -> "fight"
-                profile.riskTolerance > 0.3 -> "sneak"
-                else -> "retreat"
+                profile.riskTolerance > 0.6 -> InteractiveChoiceId.FIGHT
+                profile.riskTolerance > 0.3 -> InteractiveChoiceId.SNEAK
+                else -> InteractiveChoiceId.RETREAT
             }
             is InteractiveEvent.UnstableGround -> when {
-                profile.riskTolerance > 0.7 -> "rush"
-                profile.riskTolerance > 0.3 -> "careful"
-                else -> "reinforce"
+                profile.riskTolerance > 0.7 -> InteractiveChoiceId.RUSH
+                profile.riskTolerance > 0.3 -> InteractiveChoiceId.CAREFUL
+                else -> InteractiveChoiceId.REINFORCE
             }
             is InteractiveEvent.AncientCache -> when {
-                profile.riskTolerance > 0.5 -> "open"
-                profile.riskTolerance > 0.2 -> "study"
-                else -> "leave"
+                profile.riskTolerance > 0.5 -> InteractiveChoiceId.OPEN
+                profile.riskTolerance > 0.2 -> InteractiveChoiceId.STUDY
+                else -> InteractiveChoiceId.LEAVE
             }
             is InteractiveEvent.LostMinerEncounter -> when {
-                profile.exploreVsBuildBias > 0.5 -> "rescue"
-                profile.tradePropensity > 0.5 -> "trade"
-                else -> "directions"
+                profile.exploreVsBuildBias > 0.5 -> InteractiveChoiceId.RESCUE
+                profile.tradePropensity > 0.5 -> InteractiveChoiceId.TRADE
+                else -> InteractiveChoiceId.DIRECTIONS
             }
         }
     }

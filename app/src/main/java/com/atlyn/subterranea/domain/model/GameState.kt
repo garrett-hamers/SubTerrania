@@ -23,22 +23,14 @@ data class GameState(
     val winner: Player? = null,
     val victoryPointsToWin: Int = Difficulty.NORMAL.victoryPointsToWin,
     val eventLog: List<String> = emptyList(),
-    val selectedTile: HexCoordinate? = null,
-    val availableActions: List<GameAction> = emptyList(),
-    val showBuildMenu: Boolean = false,
     val canExploreThisTurn: Boolean = true,
-    val showTutorial: Boolean = Difficulty.NORMAL.showTutorial,
     val difficulty: Difficulty = Difficulty.NORMAL,
     val exploresThisTurn: Int = 0,  // Track explores for Easy mode
     // New fields for meta-progression and interactive events
     val selectedCharacter: GameCharacter = GameCharacter.EXPLORER,
     val pendingInteractiveEvent: InteractiveEvent? = null,
     val pendingEventCoord: HexCoordinate? = null,
-    val fastModeEnabled: Boolean = false,
     val mapPreset: MapPreset = MapPreset.STANDARD,
-    val bonusActionsFirstTurn: Int = 0, // From meta-progression
-    val firstStructureDiscount: Int = 0, // From meta-progression
-    val hasUsedFirstStructureDiscount: Boolean = false,
     val pendingConsolation: Boolean = false, // Waiting for player to pick a roll consolation
     val discountTradeAvailable: Boolean = false // One-time 2:1 trade from consolation choice
 
@@ -62,7 +54,10 @@ data class GameState(
     /**
      * Get a contextual hint for the current game state
      */
-    fun getCurrentHint(): String? {
+    fun getCurrentHint(
+        showTutorial: Boolean = difficulty.showTutorial,
+        selectedTile: HexCoordinate? = null
+    ): String? {
         if (!showTutorial || gameOver) return null
         
         val currentVP = totalVPFor(currentPlayer)
@@ -126,7 +121,7 @@ data class GameState(
     }
     
     fun addEvent(message: String): GameState {
-        val newLog = (listOf(message) + eventLog).take(20) // Keep last 20 events
+        val newLog = (listOf(message) + eventLog).take(GameConstants.EVENT_LOG_MAX)
         return copy(eventLog = newLog)
     }
     
