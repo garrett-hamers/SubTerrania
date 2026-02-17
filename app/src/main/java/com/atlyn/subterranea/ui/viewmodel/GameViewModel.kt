@@ -147,8 +147,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun startGameWithDifficulty(difficulty: Difficulty) {
         _currentDifficulty.value = difficulty
-        _showDifficultyMenu.value = false
         initializeGame(difficulty)
+        _showDifficultyMenu.value = false
         playSound(GameSound.BUTTON_TAP)
     }
 

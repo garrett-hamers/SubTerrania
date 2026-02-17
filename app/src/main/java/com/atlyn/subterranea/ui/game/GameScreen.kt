@@ -384,7 +384,7 @@ fun GameScreen(
         } // end if (!showDifficultyMenu)
         
         // Difficulty selection screen (shows at game start)
-        if (showDifficultyMenu) {
+        else {
             DifficultySelectionScreen(
                 onSelectDifficulty = { difficulty -> viewModel.startGameWithDifficulty(difficulty) },
                 metaProgression = metaProg,
