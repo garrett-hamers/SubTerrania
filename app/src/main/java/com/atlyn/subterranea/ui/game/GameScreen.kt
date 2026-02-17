@@ -33,14 +33,17 @@ import com.atlyn.subterranea.domain.model.*
 import com.atlyn.subterranea.ui.animation.*
 import com.atlyn.subterranea.ui.audio.GameSound
 import com.atlyn.subterranea.ui.audio.SoundManager
+import com.atlyn.subterranea.R
 import com.atlyn.subterranea.ui.util.IconHelper
 import com.atlyn.subterranea.ui.viewmodel.GameViewModel
+import androidx.compose.ui.res.painterResource
 
 @Composable
 fun GameScreen(
     viewModel: GameViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val gameUIState by viewModel.gameUIState.collectAsState()
     val context = LocalContext.current
     
     // End turn confirmation dialog state
@@ -135,7 +138,7 @@ fun GameScreen(
         HexMap(
             board = uiState.board,
             structures = uiState.structures,
-            selectedTile = uiState.selectedTile,
+            selectedTile = gameUIState.selectedTile,
             explorableTiles = explorableTiles,
             buildableTiles = buildableTiles,
             onTileClick = { coord -> viewModel.onTileClicked(coord) },
@@ -149,8 +152,11 @@ fun GameScreen(
         )
         
         // Tutorial hint
-        if (uiState.showTutorial) {
-            uiState.getCurrentHint()?.let { hint ->
+        if (gameUIState.showTutorial) {
+            uiState.getCurrentHint(
+                showTutorial = gameUIState.showTutorial,
+                selectedTile = gameUIState.selectedTile
+            )?.let { hint ->
                 TutorialHint(
                     hint = hint,
                     modifier = Modifier
@@ -196,12 +202,12 @@ fun GameScreen(
         }
         
         // Selected tile info panel
-        if (uiState.selectedTile != null && !uiState.showBuildMenu) {
-            val tile = uiState.board[uiState.selectedTile]
+        if (gameUIState.selectedTile != null && !gameUIState.showBuildMenu) {
+            val tile = uiState.board[gameUIState.selectedTile]
             if (tile != null) {
                 SelectedTileInfo(
                     tile = tile,
-                    structure = uiState.getStructureAt(uiState.selectedTile!!),
+                    structure = uiState.getStructureAt(gameUIState.selectedTile!!),
                     canExplore = !tile.isRevealed && uiState.canExploreThisTurn && 
                         uiState.turnPhase == TurnPhase.MAIN_ACTION,
                     modifier = Modifier
@@ -212,12 +218,13 @@ fun GameScreen(
         }
         
         // Action buttons
-        val availableStructures = remember(uiState.selectedTile, uiState.currentPlayer.resources) {
-            if (uiState.selectedTile != null) viewModel.getAvailableStructures() else emptyList()
+        val availableStructures = remember(gameUIState.selectedTile, uiState.currentPlayer.resources) {
+            if (gameUIState.selectedTile != null) viewModel.getAvailableStructures() else emptyList()
         }
 
         ActionButtons(
             uiState = uiState,
+            selectedTile = gameUIState.selectedTile,
             explorableTiles = explorableTiles,
             onRollDice = { viewModel.rollDice() },
             onEndTurn = {
@@ -242,7 +249,7 @@ fun GameScreen(
         val showTradeMenu by viewModel.showTradeMenu.collectAsState()
         
         // Build menu popup with backdrop
-        if (uiState.showBuildMenu) {
+        if (gameUIState.showBuildMenu) {
             // Dark backdrop that dismisses on tap
             Box(
                 modifier = Modifier
@@ -252,9 +259,9 @@ fun GameScreen(
             )
             
             BuildMenu(
-                availableStructures = if (uiState.selectedTile != null) viewModel.getAvailableStructures() else emptyList(),
+                availableStructures = if (gameUIState.selectedTile != null) viewModel.getAvailableStructures() else emptyList(),
                 player = uiState.currentPlayer,
-                selectedTileName = uiState.selectedTile?.let { coord ->
+                selectedTileName = gameUIState.selectedTile?.let { coord ->
                     uiState.board[coord]?.terrain?.displayName()
                 },
                 onBuild = { type -> viewModel.buildStructure(type) },
@@ -326,28 +333,42 @@ fun GameScreen(
         // End turn confirmation dialog
         if (showEndTurnConfirm) {
             val actionsLeft = uiState.maxActionsPerTurn - uiState.actionsThisTurn
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { showEndTurnConfirm = false },
-                title = { Text("End Turn?", color = Color.White) },
-                text = { 
-                    Text(
-                        "You still have $actionsLeft action${if (actionsLeft > 1) "s" else ""} remaining!\n\nYou can explore tiles, build structures, or trade resources.",
-                        color = Color(0xFFB0BEC5)
+            androidx.compose.ui.window.Dialog(
+                onDismissRequest = { showEndTurnConfirm = false }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_modal_dialog_frame),
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.FillBounds
                     )
-                },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = { showEndTurnConfirm = false; viewModel.endTurn() }
-                    ) { Text("End Turn", color = Color(0xFFFF9800)) }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(
-                        onClick = { showEndTurnConfirm = false }
-                    ) { Text("Keep Playing", color = Color(0xFF00BCD4)) }
-                },
-                containerColor = Color(0xFF1A1A2E),
-                titleContentColor = Color.White
-            )
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("End Turn?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "You still have $actionsLeft action${if (actionsLeft > 1) "s" else ""} remaining!\n\nYou can explore tiles, build structures, or trade resources.",
+                            color = Color(0xFFB0BEC5),
+                            textAlign = TextAlign.Center,
+                            fontSize = 14.sp
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showEndTurnConfirm = false }
+                            ) { Text("Keep Playing", color = Color(0xFF00BCD4)) }
+                            androidx.compose.material3.TextButton(
+                                onClick = { showEndTurnConfirm = false; viewModel.endTurn() }
+                            ) { Text("End Turn", color = Color(0xFFFF9800)) }
+                        }
+                    }
+                }
+            }
         }
         
         // Victory screen
@@ -415,12 +436,15 @@ fun TopHUD(uiState: GameState, modifier: Modifier = Modifier) {
         )
         
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "⭐",
-                fontSize = 18.sp
+            Image(
+                painter = painterResource(R.drawable.ic_vp_badge),
+                contentDescription = "Victory Points",
+                modifier = Modifier.size(20.dp),
+                contentScale = ContentScale.Fit
             )
+            Spacer(Modifier.width(4.dp))
             Text(
-                text = " ${uiState.totalVPFor(uiState.currentPlayer)}/${uiState.victoryPointsToWin} VP",
+                text = "${uiState.totalVPFor(uiState.currentPlayer)}/${uiState.victoryPointsToWin} VP",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -502,39 +526,41 @@ fun ResourceChip(resource: Resource, count: Int, modifier: Modifier = Modifier) 
         Resource.CRYSTAL -> Color(0xFF00BCD4)
     }
     
-    Row(
-        modifier = modifier
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        color.copy(alpha = 0.4f),
-                        color.copy(alpha = 0.2f)
-                    )
-                ),
-                shape = RoundedCornerShape(6.dp)
-            )
-            .border(
-                width = 1.dp,
-                color = color.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(6.dp)
-            )
-            .padding(horizontal = 6.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(6.dp))
     ) {
         Image(
-            painter = IconHelper.resourcePainter(resource),
-            contentDescription = resource.displayName(),
-            modifier = Modifier.size(22.dp),
-            contentScale = ContentScale.Fit
+            painter = painterResource(R.drawable.ic_resource_chip_background),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.FillBounds,
+            alpha = 0.6f
         )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = count.toString(),
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp
-        )
+        Row(
+            modifier = Modifier
+                .border(
+                    width = 1.dp,
+                    color = color.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(6.dp)
+                )
+                .padding(horizontal = 6.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = IconHelper.resourcePainter(resource),
+                contentDescription = resource.displayName(),
+                modifier = Modifier.size(22.dp),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = count.toString(),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+        }
     }
 }
 
@@ -686,6 +712,7 @@ fun DiceFace(value: Int, isAnimating: Boolean = false) {
 @Composable
 fun ActionButtons(
     uiState: GameState,
+    selectedTile: HexCoordinate?,
     explorableTiles: Set<HexCoordinate>,
     onRollDice: () -> Unit,
     onEndTurn: () -> Unit,
@@ -745,7 +772,7 @@ fun ActionButtons(
             )
             
             // Explore button (New)
-            val canExplore = uiState.selectedTile != null && uiState.selectedTile in explorableTiles
+            val canExplore = selectedTile != null && selectedTile in explorableTiles
             if (canExplore) {
                 ActionButton(
                     text = "🔍 Explore",
@@ -758,7 +785,7 @@ fun ActionButtons(
 
             // Build button
             val canBuild = uiState.turnPhase == TurnPhase.MAIN_ACTION && 
-                uiState.selectedTile != null &&
+                selectedTile != null &&
                 uiState.actionsThisTurn < uiState.maxActionsPerTurn
             
             val buildColor = if (canBuild && !hasAvailableStructures) Color(0xFFEF5350) else Color(0xFF00ACC1)
@@ -772,8 +799,8 @@ fun ActionButtons(
             )
             
             // Clear rubble button
-            val selectedTile = uiState.selectedTile?.let { uiState.board[it] }
-            val canClear = selectedTile?.hasRubble == true &&
+            val selectedTileData = selectedTile?.let { uiState.board[it] }
+            val canClear = selectedTileData?.hasRubble == true &&
                 uiState.currentPlayer.canAfford(mapOf(Resource.IRON_ORE to 1, Resource.BASALT to 1))
             ActionButton(
                 text = "🧹 Clear",
@@ -825,19 +852,11 @@ fun ActionButton(
         label = "buttonScale"
     )
     
-    Button(
-        onClick = {
-            isPressed = true
-            onClick()
-        },
-        enabled = enabled,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = color,
-            disabledContainerColor = Color(0xFF2A2A4A)
-        ),
+    Box(
         modifier = Modifier
             .height(44.dp)
             .scale(scale)
+            .clip(RoundedCornerShape(50))
             .then(
                 if (enabled && pulse) {
                     Modifier.border(
@@ -848,10 +867,26 @@ fun ActionButton(
                         shape = RoundedCornerShape(50)
                     )
                 } else Modifier
-            ),
-        contentPadding = PaddingValues(horizontal = 12.dp)
+            )
+            .clickable(enabled = enabled) {
+                isPressed = true
+                onClick()
+            },
+        contentAlignment = Alignment.Center
     ) {
-        Text(text, fontSize = 13.sp, color = Color.White)
+        Image(
+            painter = painterResource(R.drawable.ic_turn_action_pill),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.FillBounds,
+            alpha = if (enabled) 1f else 0.4f
+        )
+        Text(
+            text,
+            fontSize = 13.sp,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 12.dp)
+        )
     }
     
     // Reset press state after animation
@@ -1186,10 +1221,18 @@ fun TradeOptionCard(
 @Composable
 fun EventLog(events: List<String>, modifier: Modifier = Modifier) {
     // Compact vertical event log at the bottom of the screen
-    Card(
-        modifier = modifier.heightIn(max = 80.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0x88000000))
+    Box(
+        modifier = modifier
+            .heightIn(max = 80.dp)
+            .clip(RoundedCornerShape(12.dp))
     ) {
+        Image(
+            painter = painterResource(R.drawable.ic_event_log_card),
+            contentDescription = null,
+            modifier = Modifier.matchParentSize(),
+            contentScale = ContentScale.FillBounds,
+            alpha = 0.7f
+        )
         LazyColumn(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -1530,17 +1573,26 @@ fun SelectedTileInfo(
             Spacer(Modifier.height(8.dp))
             
             if (!tile.isRevealed) {
-                val riskInfo = when (tile.zone) {
-                    Zone.SURFACE -> "🟢 Safe" to Color(0xFF4CAF50)
-                    Zone.CRUST -> "🟡 Moderate risk" to Color(0xFFFFEB3B)
-                    Zone.MANTLE -> "🟠 Risky — better rewards" to Color(0xFFFF9800)
-                    Zone.CORE -> "🔴 Dangerous — richest rewards" to Color(0xFFF44336)
+                val (riskIconRes, riskLabel, riskColor) = when (tile.zone) {
+                    Zone.SURFACE -> Triple(R.drawable.ic_badge_safe, "Safe", Color(0xFF4CAF50))
+                    Zone.CRUST -> Triple(R.drawable.ic_badge_moderate, "Moderate risk", Color(0xFFFFEB3B))
+                    Zone.MANTLE -> Triple(R.drawable.ic_badge_risky, "Risky — better rewards", Color(0xFFFF9800))
+                    Zone.CORE -> Triple(R.drawable.ic_badge_dangerous, "Dangerous — richest rewards", Color(0xFFF44336))
                 }
-                Text(
-                    "❓ Unexplored — ${riskInfo.first}",
-                    color = riskInfo.second,
-                    fontSize = 14.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(riskIconRes),
+                        contentDescription = riskLabel,
+                        modifier = Modifier.size(18.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Unexplored — $riskLabel",
+                        color = riskColor,
+                        fontSize = 14.sp
+                    )
+                }
                 if (canExplore) {
                     Text(
                         "Tap to explore!",

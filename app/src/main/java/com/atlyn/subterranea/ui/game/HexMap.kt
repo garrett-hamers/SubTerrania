@@ -1,5 +1,7 @@
 package com.atlyn.subterranea.ui.game
 
+import android.graphics.Paint
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,8 +14,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
+import com.atlyn.subterranea.R
 import com.atlyn.subterranea.domain.model.*
 import kotlin.math.sqrt
 
@@ -28,6 +32,51 @@ fun HexMap(
     modifier: Modifier = Modifier
 ) {
     val hexSize = 70f // Radius of hex - larger for better visibility
+    val context = LocalContext.current
+    val badgeBitmaps = remember {
+        val badgeSize = 32
+        mapOf(
+            Zone.SURFACE to BitmapFactory.decodeResource(context.resources, R.drawable.ic_badge_safe)?.let {
+                android.graphics.Bitmap.createScaledBitmap(it, badgeSize, badgeSize, true)
+            },
+            Zone.CRUST to BitmapFactory.decodeResource(context.resources, R.drawable.ic_badge_moderate)?.let {
+                android.graphics.Bitmap.createScaledBitmap(it, badgeSize, badgeSize, true)
+            },
+            Zone.MANTLE to BitmapFactory.decodeResource(context.resources, R.drawable.ic_badge_risky)?.let {
+                android.graphics.Bitmap.createScaledBitmap(it, badgeSize, badgeSize, true)
+            },
+            Zone.CORE to BitmapFactory.decodeResource(context.resources, R.drawable.ic_badge_dangerous)?.let {
+                android.graphics.Bitmap.createScaledBitmap(it, badgeSize, badgeSize, true)
+            }
+        )
+    }
+    val fogLabelPaint = remember {
+        Paint().apply {
+            textAlign = Paint.Align.CENTER
+        }
+    }
+    val terrainEmojiPaint = remember {
+        Paint().apply {
+            textAlign = Paint.Align.CENTER
+        }
+    }
+    val numberTextPaint = remember {
+        Paint().apply {
+            color = android.graphics.Color.BLACK
+            textAlign = Paint.Align.CENTER
+            isFakeBoldText = true
+        }
+    }
+    val rubblePaint = remember {
+        Paint().apply {
+            textAlign = Paint.Align.CENTER
+        }
+    }
+    val structureEmojiPaint = remember {
+        Paint().apply {
+            textAlign = Paint.Align.CENTER
+        }
+    }
 
     // Pulse animation for explorable tiles
     val infiniteTransition = rememberInfiniteTransition(label = "hexPulse")
@@ -137,7 +186,7 @@ fun HexMap(
             
             // Draw tile content if revealed
             if (tile.isRevealed) {
-                drawTileContent(center, tile, hexSize)
+                drawTileContent(center, tile, hexSize, terrainEmojiPaint, numberTextPaint, rubblePaint)
             } else {
                 // Draw fog/unknown indicator
                 drawCircle(
@@ -146,31 +195,33 @@ fun HexMap(
                     center = center
                 )
                 // Show risk indicator for explorable tiles, "?" for others
-                val label = if (coord in explorableTiles) {
-                    when (tile.zone) {
-                        Zone.SURFACE -> "🟢"
-                        Zone.CRUST -> "🟡"
-                        Zone.MANTLE -> "🟠"
-                        Zone.CORE -> "🔴"
+                if (coord in explorableTiles) {
+                    val badge = badgeBitmaps[tile.zone]
+                    if (badge != null) {
+                        drawContext.canvas.nativeCanvas.drawBitmap(
+                            badge,
+                            center.x - badge.width / 2f,
+                            center.y - badge.height / 2f,
+                            null
+                        )
                     }
-                } else "?"
-                drawContext.canvas.nativeCanvas.drawText(
-                    label,
-                    center.x,
-                    center.y + 8f,
-                    android.graphics.Paint().apply {
-                        color = if (coord in explorableTiles) android.graphics.Color.WHITE else android.graphics.Color.GRAY
-                        textSize = if (coord in explorableTiles) 32f else 24f
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
-                )
+                } else {
+                    fogLabelPaint.color = android.graphics.Color.GRAY
+                    fogLabelPaint.textSize = 24f
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "?",
+                        center.x,
+                        center.y + 8f,
+                        fogLabelPaint
+                    )
+                }
             }
         }
         
         // Draw structures on top
         structures.forEach { structure ->
             val center = hexToPixel(structure.location, hexSize, mapOffsetX, mapOffsetY)
-            drawStructure(center, structure, hexSize)
+            drawStructure(center, structure, hexSize, structureEmojiPaint)
         }
     }
 }
@@ -203,7 +254,14 @@ private fun getTerrainColor(terrain: TerrainType): Color {
     }
 }
 
-private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Float) {
+private fun DrawScope.drawTileContent(
+    center: Offset,
+    tile: HexTile,
+    hexSize: Float,
+    terrainEmojiPaint: Paint,
+    numberTextPaint: Paint,
+    rubblePaint: Paint
+) {
     // Draw terrain emoji/icon
     val emoji = when (tile.terrain) {
         TerrainType.FUNGAL_FOREST -> "🍄"
@@ -217,14 +275,12 @@ private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Fl
         TerrainType.UNKNOWN -> "?"
     }
     
+    terrainEmojiPaint.textSize = hexSize * 0.5f
     drawContext.canvas.nativeCanvas.drawText(
         emoji,
         center.x,
         center.y - hexSize * 0.15f,
-        android.graphics.Paint().apply {
-            textSize = hexSize * 0.5f
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
+        terrainEmojiPaint
     )
     
     // Draw number token(s)
@@ -247,29 +303,23 @@ private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Fl
         val displayText = if (secondary != null) "$number|$secondary" else number.toString()
         val fontSize = if (secondary != null) hexSize * 0.22f else hexSize * 0.3f
         
+        numberTextPaint.textSize = fontSize
         drawContext.canvas.nativeCanvas.drawText(
             displayText,
             center.x,
             center.y + hexSize * 0.42f,
-            android.graphics.Paint().apply {
-                color = android.graphics.Color.BLACK
-                textSize = fontSize
-                textAlign = android.graphics.Paint.Align.CENTER
-                isFakeBoldText = true
-            }
+            numberTextPaint
         )
     }
     
     // Draw rubble indicator
     if (tile.hasRubble) {
+        rubblePaint.textSize = hexSize * 0.3f
         drawContext.canvas.nativeCanvas.drawText(
             "⚠️",
             center.x + hexSize * 0.3f,
             center.y - hexSize * 0.3f,
-            android.graphics.Paint().apply {
-                textSize = hexSize * 0.3f
-                textAlign = android.graphics.Paint.Align.CENTER
-            }
+            rubblePaint
         )
     }
     
@@ -283,7 +333,12 @@ private fun DrawScope.drawTileContent(center: Offset, tile: HexTile, hexSize: Fl
     }
 }
 
-private fun DrawScope.drawStructure(center: Offset, structure: Structure, hexSize: Float) {
+private fun DrawScope.drawStructure(
+    center: Offset,
+    structure: Structure,
+    hexSize: Float,
+    structureEmojiPaint: Paint
+) {
     val (emoji, bgColor) = when (structure.type) {
         StructureType.LANTERN -> "💡" to Color(0xFFFFEB3B)
         StructureType.OUTPOST -> "🏠" to Color(0xFF8D6E63)
@@ -309,14 +364,12 @@ private fun DrawScope.drawStructure(center: Offset, structure: Structure, hexSiz
     )
     
     // Draw structure icon
+    structureEmojiPaint.textSize = hexSize * 0.4f
     drawContext.canvas.nativeCanvas.drawText(
         emoji,
         center.x,
         center.y,
-        android.graphics.Paint().apply {
-            textSize = hexSize * 0.4f
-            textAlign = android.graphics.Paint.Align.CENTER
-        }
+        structureEmojiPaint
     )
 }
 
