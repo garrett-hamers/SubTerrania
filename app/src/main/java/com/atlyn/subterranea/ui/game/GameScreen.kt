@@ -142,7 +142,7 @@ fun GameScreen(
             explorableTiles = explorableTiles,
             buildableTiles = buildableTiles,
             onTileClick = { coord -> viewModel.onTileClicked(coord) },
-            modifier = Modifier.fillMaxSize().padding(top = 280.dp, bottom = 220.dp)
+            modifier = Modifier.fillMaxSize().padding(top = 300.dp, bottom = 250.dp)
         )
         
         // Top HUD - Turn info and VP
@@ -172,7 +172,7 @@ fun GameScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(top = 160.dp, start = 8.dp, end = 8.dp)
+                .padding(top = 148.dp, start = 6.dp, end = 6.dp)
         )
         
         // Dice display with production info
@@ -180,7 +180,7 @@ fun GameScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 220.dp)
+                    .padding(top = 236.dp)
                     .shakeAnimation(isDiceShaking),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -212,7 +212,7 @@ fun GameScreen(
                         uiState.turnPhase == TurnPhase.MAIN_ACTION,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 8.dp, bottom = 100.dp)
+                        .padding(start = 10.dp, bottom = 208.dp)
                 )
             }
         }
@@ -243,7 +243,7 @@ fun GameScreen(
             hasAvailableStructures = availableStructures.isNotEmpty(),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
+                .padding(bottom = 22.dp)
         )
         // Trade menu state
         val showTradeMenu by viewModel.showTradeMenu.collectAsState()
@@ -294,7 +294,7 @@ fun GameScreen(
             events = uiState.eventLog,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 170.dp, start = 8.dp, end = 8.dp)
+                .padding(bottom = 182.dp, start = 10.dp, end = 10.dp)
                 .fillMaxWidth()
         )
         
@@ -418,36 +418,53 @@ fun TopHUD(uiState: GameState, modifier: Modifier = Modifier) {
                 ),
                 shape = RoundedCornerShape(0.dp)
             )
-            .padding(12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Turn ${uiState.turnNumber}",
-            color = Color(0xFF80DEEA),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
-            text = uiState.turnPhase.name.replace("_", " "),
-            color = Color(0xFFFFD700),
-            fontSize = 14.sp
-        )
-        
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = "Turn ${uiState.turnNumber}",
+                color = Color(0xFF80DEEA),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+        }
+
+        Box(
+            modifier = Modifier.weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = uiState.turnPhase.name.replace("_", " "),
+                color = Color(0xFFFFD700),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
+        }
+
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
             Image(
                 painter = painterResource(R.drawable.ic_vp_badge),
                 contentDescription = "Victory Points",
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
                 contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(3.dp))
             Text(
-                text = "${uiState.totalVPFor(uiState.currentPlayer)}/${uiState.victoryPointsToWin} VP",
+                text = "${uiState.totalVPFor(uiState.currentPlayer)}/${uiState.victoryPointsToWin}",
                 color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
             )
         }
     }
@@ -459,22 +476,13 @@ fun TutorialHint(hint: String, modifier: Modifier = Modifier) {
         modifier = modifier.padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xEE00ACC1))
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "💡",
-                fontSize = 16.sp,
-                modifier = Modifier.padding(end = 8.dp)
-            )
-            Text(
-                text = hint,
-                color = Color.White,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
-            )
-        }
+        Text(
+            text = cleanUiText(hint),
+            color = Color.White,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+        )
     }
 }
 
@@ -501,8 +509,8 @@ fun ResourceBar(player: Player, modifier: Modifier = Modifier) {
                 ),
                 shape = RoundedCornerShape(12.dp)
             )
-            .padding(horizontal = 8.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
+            .padding(horizontal = 4.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Resource.entries.forEach { resource ->
@@ -527,38 +535,34 @@ fun ResourceChip(resource: Resource, count: Int, modifier: Modifier = Modifier) 
     }
     
     Box(
-        modifier = modifier.clip(RoundedCornerShape(6.dp))
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xCC101828))
+            .border(
+                width = 1.dp,
+                color = color.copy(alpha = 0.55f),
+                shape = RoundedCornerShape(8.dp)
+            )
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_resource_chip_background),
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.FillBounds,
-            alpha = 0.6f
-        )
         Row(
             modifier = Modifier
-                .border(
-                    width = 1.dp,
-                    color = color.copy(alpha = 0.6f),
-                    shape = RoundedCornerShape(6.dp)
-                )
-                .padding(horizontal = 6.dp, vertical = 6.dp),
+                .padding(horizontal = 1.dp, vertical = 3.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
                 painter = IconHelper.resourcePainter(resource),
                 contentDescription = resource.displayName(),
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(40.dp),
                 contentScale = ContentScale.Fit
             )
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(1.dp))
             Text(
                 text = count.toString(),
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -597,7 +601,12 @@ fun ProductionBadge(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("⛏️", fontSize = 12.sp)
+            Text(
+                "PROD",
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.85f),
+                fontWeight = FontWeight.Bold
+            )
             production.forEach { (resource, amount) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -733,7 +742,7 @@ fun ActionButtons(
             Text(
                 text = "Actions: ${uiState.maxActionsPerTurn - uiState.actionsThisTurn} remaining",
                 color = if (uiState.actionsThisTurn >= uiState.maxActionsPerTurn) Color(0xFF607D8B) else Color(0xFF80DEEA),
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
         }
@@ -759,13 +768,13 @@ fun ActionButtons(
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Roll Dice button - pulses when it's time to roll
             val shouldRoll = uiState.turnPhase == TurnPhase.ROLL_DICE
             ActionButton(
-                text = "🎲 Roll",
+                text = "Roll",
                 enabled = shouldRoll,
                 onClick = onRollDice,
                 pulse = shouldRoll
@@ -775,7 +784,7 @@ fun ActionButtons(
             val canExplore = selectedTile != null && selectedTile in explorableTiles
             if (canExplore) {
                 ActionButton(
-                    text = "🔍 Explore",
+                    text = "Explore",
                     enabled = true,
                     onClick = onExploreClick,
                     pulse = true,
@@ -789,7 +798,7 @@ fun ActionButtons(
                 uiState.actionsThisTurn < uiState.maxActionsPerTurn
             
             val buildColor = if (canBuild && !hasAvailableStructures) Color(0xFFEF5350) else Color(0xFF00ACC1)
-            val buildText = if (canBuild && !hasAvailableStructures) "⚠️ Build" else "🏗️ Build"
+            val buildText = "Build"
 
             ActionButton(
                 text = buildText,
@@ -803,14 +812,14 @@ fun ActionButtons(
             val canClear = selectedTileData?.hasRubble == true &&
                 uiState.currentPlayer.canAfford(mapOf(Resource.IRON_ORE to 1, Resource.BASALT to 1))
             ActionButton(
-                text = "🧹 Clear",
+                text = "Clear",
                 enabled = canClear,
                 onClick = onClearRubble
             )
             
             // Trade button (4:1 resource exchange)
             ActionButton(
-                text = "🔄 Trade",
+                text = "Trade",
                 enabled = canTrade && uiState.turnPhase == TurnPhase.MAIN_ACTION,
                 onClick = onTradeClick,
                 color = Color(0xFF9C27B0)
@@ -818,7 +827,7 @@ fun ActionButtons(
             
             // End Turn button
             ActionButton(
-                text = "➡️ End",
+                text = "End",
                 enabled = uiState.turnPhase != TurnPhase.ROLL_DICE,
                 onClick = onEndTurn,
                 color = Color(0xFFFF9800)
@@ -854,9 +863,24 @@ fun ActionButton(
     
     Box(
         modifier = Modifier
-            .height(44.dp)
+            .height(42.dp)
             .scale(scale)
             .clip(RoundedCornerShape(50))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = if (enabled) {
+                        listOf(color.copy(alpha = 0.85f), color.copy(alpha = 0.5f))
+                    } else {
+                        listOf(Color(0xFF485266), Color(0xFF343B4A))
+                    }
+                ),
+                shape = RoundedCornerShape(50)
+            )
+            .border(
+                width = 1.dp,
+                color = if (enabled) color.copy(alpha = 0.8f) else Color(0xFF5F687A),
+                shape = RoundedCornerShape(50)
+            )
             .then(
                 if (enabled && pulse) {
                     Modifier.border(
@@ -871,21 +895,15 @@ fun ActionButton(
             .clickable(enabled = enabled) {
                 isPressed = true
                 onClick()
-            },
+            }
+            .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_turn_action_pill),
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.FillBounds,
-            alpha = if (enabled) 1f else 0.4f
-        )
         Text(
             text,
-            fontSize = 13.sp,
-            color = Color.White,
-            modifier = Modifier.padding(horizontal = 12.dp)
+            fontSize = 11.sp,
+            color = if (enabled) Color.White else Color(0xFFCFD8DC),
+            fontWeight = FontWeight.SemiBold
         )
     }
     
@@ -909,8 +927,8 @@ fun BuildMenu(
 ) {
     Card(
         modifier = modifier
-            .width(320.dp)
-            .heightIn(max = 400.dp)
+            .width(340.dp)
+            .heightIn(max = 420.dp)
             .border(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
@@ -931,7 +949,7 @@ fun BuildMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "🏗️ Build Structure",
+                    "Build Structure",
                     color = Color(0xFF80DEEA),
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
@@ -948,14 +966,14 @@ fun BuildMenu(
             
             if (selectedTileName != null) {
                 Text(
-                    "📍 Building on: $selectedTileName",
+                    "Building on: $selectedTileName",
                     color = Color(0xFFB0BEC5),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             } else {
                 Text(
-                    "⚠️ Select a tile first",
+                    "Select a tile first",
                     color = Color(0xFFFF9800),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -965,7 +983,7 @@ fun BuildMenu(
             // Show all structure types, highlighting which are available
             val allTypes = StructureType.entries.toList()
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(allTypes) { type ->
                     val isAvailable = type in availableStructures
@@ -1012,7 +1030,7 @@ fun StructureCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "⭐${structureType.victoryPoints}",
+                    "${structureType.victoryPoints} VP",
                     color = Color(0xFFFFD700)
                 )
             }
@@ -1026,23 +1044,30 @@ fun StructureCard(
             Spacer(Modifier.height(4.dp))
             
             // Cost display with affordability per resource
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 structureType.cost.forEach { (resource, amount) ->
                     val have = player.getResourceCount(resource)
                     val enough = have >= amount
-                    val emoji = when (resource) {
-                        Resource.MYCELIUM -> "🍄"
-                        Resource.BASALT -> "🧱"
-                        Resource.CHITIN -> "🪲"
-                        Resource.LICHEN -> "🌿"
-                        Resource.IRON_ORE -> "⚙️"
-                        Resource.CRYSTAL -> "💎"
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = IconHelper.resourcePainter(resource),
+                            contentDescription = resource.displayName(),
+                            modifier = Modifier.size(14.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            amount.toString(),
+                            fontSize = 12.sp,
+                            color = if (enough) Color(0xFF4CAF50) else Color(0xFFFF6B6B),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Text(
-                        "$emoji$amount",
-                        fontSize = 12.sp,
-                        color = if (enough) Color(0xFF4CAF50) else Color(0xFFFF6B6B)
-                    )
                 }
             }
             
@@ -1086,7 +1111,7 @@ fun TradeMenu(
 ) {
     Card(
         modifier = modifier
-            .width(320.dp)
+            .width(340.dp)
             .heightIn(max = 500.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xEE1A1A2E))
     ) {
@@ -1097,7 +1122,7 @@ fun TradeMenu(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "🔄 Trade Resources",
+                    "Trade Resources",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp
@@ -1158,26 +1183,28 @@ fun TradeOptionCard(
     allResources: List<Resource>,
     onTrade: (receive: Resource) -> Unit
 ) {
-    val giveEmoji = when (giveResource) {
-        Resource.MYCELIUM -> "🍄"
-        Resource.BASALT -> "🧱"
-        Resource.CHITIN -> "🪲"
-        Resource.LICHEN -> "🌿"
-        Resource.IRON_ORE -> "⚙️"
-        Resource.CRYSTAL -> "💎"
-    }
-    
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D44))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                "$giveEmoji Give $tradeRatio ${giveResource.displayName()} (have $playerAmount)",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = IconHelper.resourcePainter(giveResource),
+                    contentDescription = giveResource.displayName(),
+                    modifier = Modifier.size(16.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Text(
+                    "Give $tradeRatio ${giveResource.displayName()} (have $playerAmount)",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+            }
             
             Spacer(Modifier.height(8.dp))
             
@@ -1193,24 +1220,30 @@ fun TradeOptionCard(
                 modifier = Modifier.padding(top = 4.dp)
             ) {
                 items(allResources) { receiveResource ->
-                    val receiveEmoji = when (receiveResource) {
-                        Resource.MYCELIUM -> "🍄"
-                        Resource.BASALT -> "🧱"
-                        Resource.CHITIN -> "🪲"
-                        Resource.LICHEN -> "🌿"
-                        Resource.IRON_ORE -> "⚙️"
-                        Resource.CRYSTAL -> "💎"
-                    }
-                    
                     Button(
                         onClick = { onTrade(receiveResource) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                         modifier = Modifier.height(36.dp)
                     ) {
-                        Text(receiveEmoji, fontSize = 16.sp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                painter = IconHelper.resourcePainter(receiveResource),
+                                contentDescription = receiveResource.displayName(),
+                                modifier = Modifier.size(14.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Text(
+                                receiveResource.displayName().take(3),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -1225,21 +1258,16 @@ fun EventLog(events: List<String>, modifier: Modifier = Modifier) {
         modifier = modifier
             .heightIn(max = 80.dp)
             .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xCC111827))
+            .border(1.dp, Color(0x5529B6F6), RoundedCornerShape(12.dp))
     ) {
-        Image(
-            painter = painterResource(R.drawable.ic_event_log_card),
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.FillBounds,
-            alpha = 0.7f
-        )
         LazyColumn(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             items(events.take(3)) { event ->
                 Text(
-                    "📜 $event",
+                    cleanUiText(event),
                     color = Color.LightGray.copy(alpha = 0.9f),
                     fontSize = 11.sp,
                     maxLines = 2,
@@ -1256,19 +1284,19 @@ fun ExplorationEventCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val (emoji, bgColor) = when (event) {
-        is ExplorationEvent.TreasureCache -> "💎" to Color(0xFF4CAF50)
-        is ExplorationEvent.CrystalVein -> "💎" to Color(0xFF00BCD4)
-        is ExplorationEvent.AncientArtifact -> "🏺" to Color(0xFFFFD700)
-        is ExplorationEvent.BeetleNest -> "🪲" to Color(0xFF8BC34A)
-        is ExplorationEvent.FungalBloom -> "🍄" to Color(0xFF9C27B0)
-        is ExplorationEvent.CaveIn -> "💥" to Color(0xFFF44336)
-        is ExplorationEvent.GasLeak -> "☠️" to Color(0xFF9E9E9E)
-        is ExplorationEvent.MagmaBurst -> "🌋" to Color(0xFFFF5722)
-        is ExplorationEvent.Tremor -> "🌍" to Color(0xFF795548)
-        is ExplorationEvent.GeothermalVent -> "♨️" to Color(0xFFFF9800)
-        is ExplorationEvent.LostMiner -> "👷" to Color(0xFF2196F3)
-        ExplorationEvent.StableGround -> "✓" to Color.Gray
+    val bgColor = when (event) {
+        is ExplorationEvent.TreasureCache -> Color(0xFF4CAF50)
+        is ExplorationEvent.CrystalVein -> Color(0xFF00BCD4)
+        is ExplorationEvent.AncientArtifact -> Color(0xFFFFD700)
+        is ExplorationEvent.BeetleNest -> Color(0xFF8BC34A)
+        is ExplorationEvent.FungalBloom -> Color(0xFF9C27B0)
+        is ExplorationEvent.CaveIn -> Color(0xFFF44336)
+        is ExplorationEvent.GasLeak -> Color(0xFF9E9E9E)
+        is ExplorationEvent.MagmaBurst -> Color(0xFFFF5722)
+        is ExplorationEvent.Tremor -> Color(0xFF795548)
+        is ExplorationEvent.GeothermalVent -> Color(0xFFFF9800)
+        is ExplorationEvent.LostMiner -> Color(0xFF2196F3)
+        ExplorationEvent.StableGround -> Color.Gray
     }
     
     Card(
@@ -1281,7 +1309,11 @@ fun ExplorationEventCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(emoji, fontSize = 48.sp)
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .background(Color.White.copy(alpha = 0.8f), CircleShape)
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 event.name,
@@ -1328,8 +1360,6 @@ fun ConsolationChoiceCard(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("🎲", fontSize = 36.sp)
-            Spacer(Modifier.height(4.dp))
             Text(
                 "No Production!",
                 color = Color.White,
@@ -1360,7 +1390,7 @@ fun ConsolationChoiceCard(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "${choice.emoji} ${choice.displayName}",
+                        choice.displayName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
                     )
@@ -1455,9 +1485,13 @@ fun VictoryScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "🎉",
-                    fontSize = 64.sp,
-                    modifier = Modifier.scale(emojiScale)
+                    "VICTORY",
+                    color = Color(0xFFFFD700),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 34.sp,
+                    modifier = Modifier
+                        .scale(emojiScale)
+                        .graphicsLayer { rotationZ = rotation }
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
@@ -1501,7 +1535,7 @@ fun VictoryScreen(
                         )
                         
                         Text(
-                            "🏆 ${achievement.displayName}",
+                            achievement.displayName,
                             color = Color(0xFFFFD700),
                             fontSize = 12.sp,
                             modifier = Modifier.scale(achievementScale)
@@ -1514,7 +1548,7 @@ fun VictoryScreen(
                 Divider(color = Color.Gray.copy(alpha = 0.3f))
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "📊 Lifetime: ${metaProgression.gamesWon}W/${metaProgression.gamesPlayed}G • ${metaProgression.totalVPEarned} VP",
+                    "Lifetime: ${metaProgression.gamesWon}W/${metaProgression.gamesPlayed}G • ${metaProgression.totalVPEarned} VP",
                     color = Color.Gray,
                     fontSize = 11.sp
                 )
@@ -1525,7 +1559,7 @@ fun VictoryScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
                     modifier = Modifier.scale(pulseScale(1f, 1.05f, 1000))
                 ) {
-                    Text("🔄 Play Again")
+                    Text("Play Again")
                 }
             }
         }
@@ -1540,7 +1574,7 @@ fun SelectedTileInfo(
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.width(180.dp),
+        modifier = modifier.width(170.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xDD1A1A2E))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -1602,24 +1636,23 @@ fun SelectedTileInfo(
                 }
             } else {
                 // Terrain type
-                val (emoji, terrainName) = when (tile.terrain) {
-                    TerrainType.FUNGAL_FOREST -> "🍄" to "Fungal Forest"
-                    TerrainType.BASALT_QUARRY -> "🧱" to "Basalt Quarry"
-                    TerrainType.BEETLE_FARM -> "🪲" to "Beetle Farm"
-                    TerrainType.LICHEN_FIELD -> "🌿" to "Lichen Field"
-                    TerrainType.IRON_VEIN -> "⚙️" to "Iron Vein"
-                    TerrainType.CRYSTAL_GROTTO -> "💎" to "Crystal Grotto"
-                    TerrainType.MAGMA_FLOW -> "🌋" to "Magma Flow"
-                    TerrainType.BEDROCK -> "🪨" to "Bedrock"
-                    TerrainType.UNKNOWN -> "?" to "Unknown"
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = IconHelper.terrainPainter(tile.terrain),
+                        contentDescription = tile.terrain.displayName(),
+                        modifier = Modifier.size(16.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Text(
+                        tile.terrain.displayName(),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
                 }
-                
-                Text(
-                    "$emoji $terrainName",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
                 
                 // Production number
                 tile.numberToken?.let { number ->
@@ -1635,7 +1668,7 @@ fun SelectedTileInfo(
                 // Status indicators
                 if (tile.hasRubble) {
                     Text(
-                        "⚠️ Has rubble",
+                        "Rubble present",
                         color = Color(0xFFF44336),
                         fontSize = 12.sp
                     )
@@ -1643,7 +1676,7 @@ fun SelectedTileInfo(
                 
                 if (!tile.isIlluminated) {
                     Text(
-                        "🌑 Not illuminated",
+                        "Not illuminated",
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
@@ -1657,11 +1690,22 @@ fun SelectedTileInfo(
                 // Structure info
                 structure?.let {
                     Spacer(Modifier.height(4.dp))
-                    Text(
-                        "🏗️ ${it.type.displayName}",
-                        color = Color(0xFF4CAF50),
-                        fontSize = 12.sp
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = IconHelper.structurePainter(it.type),
+                            contentDescription = it.type.displayName,
+                            modifier = Modifier.size(14.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            it.type.displayName,
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp
+                        )
+                    }
                 }
             }
         }
@@ -1702,7 +1746,7 @@ private fun getBuildFailureReason(player: Player, uiState: GameState?): String {
     val mostNeeded = resourceCounts.maxByOrNull { it.value }?.key ?: "resources"
     val tradeRatio = uiState?.difficulty?.tradeRatio ?: 4
     
-    return "Insufficient resources.\nMost needed: $mostNeeded\n\n💡 Try trading at $tradeRatio:1 ratio!"
+    return "Insufficient resources.\nMost needed: $mostNeeded\n\nTip: Try trading at $tradeRatio:1 ratio."
 }
 
 @Composable
@@ -1749,7 +1793,7 @@ fun DifficultySelectionScreen(
             ) {
                 // Title with mining theme
                 Text(
-                    "⛏️ SubTerrania ⛏️",
+                    "SubTerrania",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFFFD700)
@@ -1799,7 +1843,7 @@ fun DifficultySelectionScreen(
                 
                 // Legend
                 Text(
-                    "💡 Higher difficulty = more hazards,\nfewer resources, harder trades",
+                    "Higher difficulty = more hazards,\nfewer resources, harder trades",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -1811,7 +1855,7 @@ fun DifficultySelectionScreen(
                     Divider(color = Color.Gray.copy(alpha = 0.3f))
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "📊 ${metaProgression.gamesWon}/${metaProgression.gamesPlayed} wins • ${metaProgression.totalVPEarned} total VP • ${metaProgression.lifetimeAchievements.size} achievements",
+                        "${metaProgression.gamesWon}/${metaProgression.gamesPlayed} wins • ${metaProgression.totalVPEarned} total VP • ${metaProgression.lifetimeAchievements.size} achievements",
                         fontSize = 11.sp,
                         color = Color.Gray,
                         textAlign = TextAlign.Center
@@ -1828,11 +1872,11 @@ private fun DifficultyButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val (emoji, color, description) = when (difficulty) {
-        Difficulty.EASY -> Triple("🌱", Color(0xFF4CAF50), "Relaxed mining • More resources • Forgiving")
-        Difficulty.NORMAL -> Triple("⚒️", Color(0xFF2196F3), "Balanced experience • Standard rules")
-        Difficulty.HARD -> Triple("💀", Color(0xFFFF9800), "Challenging • Scarce resources • More hazards")
-        Difficulty.NIGHTMARE -> Triple("🔥", Color(0xFFF44336), "Brutal • Extreme scarcity • Constant danger")
+    val (color, description) = when (difficulty) {
+        Difficulty.EASY -> Color(0xFF4CAF50) to "Relaxed mining • More resources • Forgiving"
+        Difficulty.NORMAL -> Color(0xFF2196F3) to "Balanced experience • Standard rules"
+        Difficulty.HARD -> Color(0xFFFF9800) to "Challenging • Scarce resources • More hazards"
+        Difficulty.NIGHTMARE -> Color(0xFFF44336) to "Brutal • Extreme scarcity • Constant danger"
     }
     
     Card(
@@ -1846,12 +1890,13 @@ private fun DifficultyButton(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                emoji,
-                fontSize = 32.sp
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .background(color, CircleShape)
             )
             
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(12.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1871,9 +1916,9 @@ private fun DifficultyButton(
                     modifier = Modifier.padding(top = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    StatChip("🏆 ${difficulty.victoryPointsToWin} VP", Color.White)
-                    StatChip("⚡ ${difficulty.maxActionsPerTurn}/turn", Color.White)
-                    StatChip("💱 ${difficulty.tradeRatio}:1", Color.White)
+                    StatChip("${difficulty.victoryPointsToWin} VP", Color.White)
+                    StatChip("${difficulty.maxActionsPerTurn}/turn", Color.White)
+                    StatChip("${difficulty.tradeRatio}:1", Color.White)
                 }
             }
         }
@@ -1890,4 +1935,12 @@ private fun StatChip(text: String, color: Color) {
             .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
             .padding(horizontal = 4.dp, vertical = 2.dp)
     )
+}
+
+private fun cleanUiText(value: String): String {
+    return value
+        .replace(Regex("[\\p{So}\\p{Cs}]"), "")
+        .replace(Regex("[\\uFE00-\\uFE0F]"), "")
+        .replace(Regex("\\s{2,}"), " ")
+        .trim()
 }
