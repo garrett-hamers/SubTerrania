@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.atlyn.subterranea.domain.logic.BoardGenerator
 import com.atlyn.subterranea.domain.logic.GameEngine
 import com.atlyn.subterranea.domain.model.*
+import com.atlyn.subterranea.domain.telemetry.GameTelemetry
 import com.atlyn.subterranea.ui.audio.GameSound
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,6 +85,60 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _soundEvent.value = sound
     }
 
+    private fun logActionAttempt(event: String, details: Map<String, Any?> = emptyMap()) {
+        GameTelemetry.logState(
+            event = "${event}_attempt",
+            state = _uiState.value,
+            outcome = GameTelemetry.Outcome.ATTEMPT,
+            details = details + mapOf("source" to "viewmodel")
+        )
+    }
+
+    private fun logActionRejected(
+        event: String,
+        reasonCode: String,
+        details: Map<String, Any?> = emptyMap()
+    ) {
+        val state = _uiState.value
+        GameTelemetry.logTransition(
+            event = "${event}_result",
+            before = state,
+            after = state,
+            outcome = GameTelemetry.Outcome.REJECTED,
+            reasonCode = reasonCode,
+            details = details + mapOf("source" to "viewmodel")
+        )
+    }
+
+    private fun logActionResult(
+        event: String,
+        before: GameState,
+        after: GameState,
+        success: Boolean,
+        reasonCode: String? = null,
+        details: Map<String, Any?> = emptyMap()
+    ) {
+        val resolvedReason = if (success) {
+            null
+        } else {
+            reasonCode
+                ?: GameTelemetry.reasonCodeFromEventMessage(GameTelemetry.eventMessage(after))
+                ?: "action_rejected"
+        }
+        GameTelemetry.logTransition(
+            event = "${event}_result",
+            before = before,
+            after = after,
+            outcome = if (success) GameTelemetry.Outcome.SUCCESS else GameTelemetry.Outcome.REJECTED,
+            reasonCode = resolvedReason,
+            details = details + mapOf("source" to "viewmodel")
+        )
+    }
+
+    private fun resourceMapByName(resources: Map<Resource, Int>): Map<String, Int> {
+        return resources.entries.associate { (resource, amount) -> resource.name to amount }
+    }
+
     init {
         _fastModeEnabled.value = _metaProgression.value.fastModeEnabled
         _gameUIState.value = _gameUIState.value.copy(fastModeEnabled = _fastModeEnabled.value)
@@ -146,6 +201,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Start game with selected difficulty
      */
     fun startGameWithDifficulty(difficulty: Difficulty) {
+        logActionAttempt(
+            event = "game_start",
+            details = mapOf(
+                "difficulty" to difficulty.name,
+                "character" to _selectedCharacter.value.name,
+                "mapPreset" to _selectedMapPreset.value.name
+            )
+        )
         _currentDifficulty.value = difficulty
         initializeGame(difficulty)
         _showDifficultyMenu.value = false
@@ -196,9 +259,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             showTutorial = difficulty.showTutorial,
             fastModeEnabled = _fastModeEnabled.value
         )
+        GameTelemetry.logState(
+            event = "game_start",
+            state = _uiState.value,
+            outcome = GameTelemetry.Outcome.SUCCESS,
+            details = mapOf(
+                "difficulty" to difficulty.name,
+                "character" to character.name,
+                "mapPreset" to mapPreset.name,
+                "startingResources" to resourceMapByName(startingResources),
+                "maxActionsPerTurn" to maxActions
+            )
+        )
     }
     
     fun resetGame() {
+        val currentState = _uiState.value
+        if (currentState.turnNumber > 1 || currentState.eventLog.isNotEmpty()) {
+            GameTelemetry.logState(
+                event = "game_reset",
+                state = currentState,
+                outcome = GameTelemetry.Outcome.SUCCESS,
+                details = mapOf("reason" to "manual_reset")
+            )
+        }
         // Fully reset all state to prevent UI overlay issues
         _showDifficultyMenu.value = true
         _showCharacterMenu.value = false
@@ -219,6 +303,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val player = state.currentPlayer
         val vpEarned = player.calculateVictoryPoints() + player.victoryPoints
+        val resourcesBefore = state.currentPlayer.resources
         
         _metaProgression.update { current ->
             var updated = current.recordGameEnd(won, vpEarned, player.achievements)
@@ -252,6 +337,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         
         // Persist to disk
         saveMetaProgression(_metaProgression.value)
+        GameTelemetry.logState(
+            event = "meta_progression_recorded",
+            state = _uiState.value,
+            outcome = GameTelemetry.Outcome.SUCCESS,
+            details = mapOf(
+                "won" to won,
+                "vpEarned" to vpEarned,
+                "gamesPlayed" to _metaProgression.value.gamesPlayed,
+                "gamesWon" to _metaProgression.value.gamesWon,
+                "resourcesAtEnd" to resourceMapByName(resourcesBefore)
+            )
+        )
     }
     
     /**
@@ -259,12 +356,45 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun handleEventChoice(choiceId: InteractiveChoiceId) {
         val state = _uiState.value
-        val event = state.pendingInteractiveEvent ?: return
-        val coord = state.pendingEventCoord ?: return
+        logActionAttempt(
+            event = "interactive_event_choice",
+            details = mapOf("choiceId" to choiceId.name)
+        )
+        val event = state.pendingInteractiveEvent
+        if (event == null) {
+            logActionRejected(
+                event = "interactive_event_choice",
+                reasonCode = "no_pending_interactive_event",
+                details = mapOf("choiceId" to choiceId.name)
+            )
+            return
+        }
+        val coord = state.pendingEventCoord
+        if (coord == null) {
+            logActionRejected(
+                event = "interactive_event_choice",
+                reasonCode = "missing_event_coordinate",
+                details = mapOf("choiceId" to choiceId.name)
+            )
+            return
+        }
         
         _uiState.update { currentState ->
             GameEngine.resolveInteractiveEvent(currentState, event, choiceId, coord)
         }
+        val after = _uiState.value
+        val success = !GameTelemetry.isRejectedMessage(GameTelemetry.eventMessage(after))
+        logActionResult(
+            event = "interactive_event_choice",
+            before = state,
+            after = after,
+            success = success,
+            details = mapOf(
+                "choiceId" to choiceId.name,
+                "eventType" to event::class.java.simpleName,
+                "location" to GameTelemetry.coordinatePayload(coord)
+            )
+        )
         playSound(GameSound.BUTTON_TAP)
     }
     
@@ -279,9 +409,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
      * Handle consolation choice after a non-producing roll
      */
     fun handleConsolationChoice(choice: RollConsolation) {
+        val before = _uiState.value
+        logActionAttempt(
+            event = "consolation_choice",
+            details = mapOf("choice" to choice.name)
+        )
+        if (!before.pendingConsolation) {
+            logActionRejected(
+                event = "consolation_choice",
+                reasonCode = "no_pending_consolation",
+                details = mapOf("choice" to choice.name)
+            )
+            return
+        }
         _uiState.update { currentState ->
             GameEngine.resolveConsolation(currentState, choice)
         }
+        val after = _uiState.value
+        logActionResult(
+            event = "consolation_choice",
+            before = before,
+            after = after,
+            success = true,
+            details = mapOf("choice" to choice.name)
+        )
         
         // Trigger production animation if resource was gained
         if (_uiState.value.lastProduction.isNotEmpty()) {
@@ -294,9 +445,24 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onTileClicked(coord: HexCoordinate) {
         val state = _uiState.value
-        val tile = state.board[coord] ?: return
+        val tile = state.board[coord]
+        if (tile == null) {
+            logActionRejected(
+                event = "tile_click",
+                reasonCode = "invalid_location",
+                details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+            )
+            return
+        }
         val uiState = _gameUIState.value
         val wasUnrevealed = !tile.isRevealed
+        logActionAttempt(
+            event = "tile_click",
+            details = mapOf(
+                "location" to GameTelemetry.coordinatePayload(coord),
+                "turnPhase" to state.turnPhase.name
+            )
+        )
 
         Log.d(TAG, "TILE_CLICK: coord=$coord, phase=${state.turnPhase}")
 
@@ -308,12 +474,31 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
         if (shouldExplore) {
             Log.d(TAG, "TILE_CLICK: Exploring tile")
+            logActionAttempt(
+                event = "explore",
+                details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+            )
             _uiState.update { currentState -> GameEngine.exploreTile(currentState, coord) }
+            val afterExplore = _uiState.value
+            val explored = afterExplore.board[coord]?.isRevealed == true && wasUnrevealed
+            logActionResult(
+                event = "explore",
+                before = state,
+                after = afterExplore,
+                success = explored,
+                details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+            )
         } else {
             Log.d(TAG, "TILE_CLICK: Selecting tile $coord")
         }
 
         _gameUIState.update { it.copy(selectedTile = coord, showBuildMenu = false) }
+        GameTelemetry.logState(
+            event = "tile_select_result",
+            state = _uiState.value,
+            outcome = GameTelemetry.Outcome.SUCCESS,
+            details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+        )
 
         val newTile = _uiState.value.board[coord]
         if (wasUnrevealed && newTile?.isRevealed == true) {
@@ -324,25 +509,88 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun exploreSelectedTile() {
-        val state = _uiState.value
-        val coord = _gameUIState.value.selectedTile ?: return
-        val tile = state.board[coord] ?: return
-        
-        if (state.turnPhase == TurnPhase.MAIN_ACTION && !tile.isRevealed) {
-             if (state.canExploreThisTurn && state.actionsThisTurn < state.maxActionsPerTurn) {
-                playSound(GameSound.EXPLORE)
-                _uiState.update { currentState ->
-                    GameEngine.exploreTile(currentState, coord)
-                }
-                _gameUIState.update { it.copy(showBuildMenu = false) }
-             }
+        val before = _uiState.value
+        val coord = _gameUIState.value.selectedTile
+        logActionAttempt(
+            event = "explore",
+            details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+        )
+        if (coord == null) {
+            logActionRejected(
+                event = "explore",
+                reasonCode = "tile_not_selected"
+            )
+            return
         }
+        val tile = before.board[coord]
+        if (tile == null) {
+            logActionRejected(
+                event = "explore",
+                reasonCode = "invalid_location",
+                details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+            )
+            return
+        }
+        
+        if (before.turnPhase != TurnPhase.MAIN_ACTION) {
+            logActionRejected(
+                event = "explore",
+                reasonCode = "wrong_phase",
+                details = mapOf("turnPhase" to before.turnPhase.name)
+            )
+            return
+        }
+        if (tile.isRevealed) {
+            logActionRejected(
+                event = "explore",
+                reasonCode = "tile_already_revealed",
+                details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+            )
+            return
+        }
+        if (!before.canExploreThisTurn || before.actionsThisTurn >= before.maxActionsPerTurn) {
+            logActionRejected(
+                event = "explore",
+                reasonCode = if (!before.canExploreThisTurn) "explore_cap_reached" else "action_cap_reached",
+                details = mapOf(
+                    "canExploreThisTurn" to before.canExploreThisTurn,
+                    "actionsThisTurn" to before.actionsThisTurn,
+                    "maxActionsPerTurn" to before.maxActionsPerTurn
+                )
+            )
+            return
+        }
+
+        playSound(GameSound.EXPLORE)
+        _uiState.update { currentState ->
+            GameEngine.exploreTile(currentState, coord)
+        }
+        _gameUIState.update { it.copy(showBuildMenu = false) }
+        val after = _uiState.value
+        val success = after.board[coord]?.isRevealed == true
+        logActionResult(
+            event = "explore",
+            before = before,
+            after = after,
+            success = success,
+            details = mapOf("location" to GameTelemetry.coordinatePayload(coord))
+        )
     }
     
     fun rollDice() {
-        Log.d(TAG, "ROLL_DICE: called, phase=${_uiState.value.turnPhase}")
-        if (_uiState.value.turnPhase != TurnPhase.ROLL_DICE) {
+        val before = _uiState.value
+        logActionAttempt(
+            event = "roll",
+            details = mapOf("turnPhase" to before.turnPhase.name)
+        )
+        Log.d(TAG, "ROLL_DICE: called, phase=${before.turnPhase}")
+        if (before.turnPhase != TurnPhase.ROLL_DICE) {
             Log.d(TAG, "ROLL_DICE: wrong phase")
+            logActionRejected(
+                event = "roll",
+                reasonCode = "wrong_phase",
+                details = mapOf("turnPhase" to before.turnPhase.name)
+            )
             return
         }
         
@@ -355,6 +603,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "ROLL_DICE: rolled ${result.lastDiceResult}")
             result
         }
+        val after = _uiState.value
+        logActionResult(
+            event = "roll",
+            before = before,
+            after = after,
+            success = true,
+            details = mapOf(
+                "diceTotal" to after.lastDiceResult?.total,
+                "pendingConsolation" to after.pendingConsolation
+            )
+        )
         
         // If resources were gained, trigger production animation
         if (_uiState.value.lastProduction.isNotEmpty()) {
@@ -371,14 +630,27 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     
     fun buildStructure(structureType: StructureType) {
         val location = _gameUIState.value.selectedTile
+        logActionAttempt(
+            event = "build",
+            details = mapOf(
+                "structureType" to structureType.name,
+                "location" to GameTelemetry.coordinatePayload(location)
+            )
+        )
         Log.d(TAG, "BUILD: type=$structureType, location=$location")
         
         if (location == null) {
             Log.d(TAG, "BUILD: No tile selected!")
+            logActionRejected(
+                event = "build",
+                reasonCode = "tile_not_selected",
+                details = mapOf("structureType" to structureType.name)
+            )
             playSound(GameSound.ERROR)
             return
         }
         
+        val before = _uiState.value
         val previousStructureCount = _uiState.value.structures.size
         
         _uiState.update { currentState ->
@@ -386,6 +658,19 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             Log.d(TAG, "BUILD: structures=${result.structures.size}, VP=${result.currentPlayer.calculateVictoryPoints()}")
             result
         }
+        val after = _uiState.value
+        val built = after.actionsThisTurn > before.actionsThisTurn &&
+            !GameTelemetry.isRejectedMessage(GameTelemetry.eventMessage(after))
+        logActionResult(
+            event = "build",
+            before = before,
+            after = after,
+            success = built,
+            details = mapOf(
+                "structureType" to structureType.name,
+                "location" to GameTelemetry.coordinatePayload(location)
+            )
+        )
         _gameUIState.update { it.copy(showBuildMenu = false, selectedTile = null) }
         
         // Play sound if structure was actually built
@@ -416,10 +701,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun tradeResources(give: Resource, receive: Resource) {
+        val before = _uiState.value
+        logActionAttempt(
+            event = "trade",
+            details = mapOf(
+                "giveResource" to give.name,
+                "receiveResource" to receive.name
+            )
+        )
         playSound(GameSound.TRADE)
         _uiState.update { currentState ->
             GameEngine.tradeResources(currentState, give, receive)
         }
+        val after = _uiState.value
+        val success = GameTelemetry.eventMessage(after)?.startsWith("🔄 Traded") == true
+        logActionResult(
+            event = "trade",
+            before = before,
+            after = after,
+            success = success,
+            details = mapOf(
+                "giveResource" to give.name,
+                "receiveResource" to receive.name
+            )
+        )
     }
     
     fun canTrade(): Boolean = GameEngine.canTrade(_uiState.value)
@@ -427,27 +732,82 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     fun getTradableResources(): List<Resource> = GameEngine.getTradableResources(_uiState.value)
     
     fun clearRubble() {
-        val location = _gameUIState.value.selectedTile ?: return
+        val location = _gameUIState.value.selectedTile
+        logActionAttempt(
+            event = "clear_rubble",
+            details = mapOf("location" to GameTelemetry.coordinatePayload(location))
+        )
+        if (location == null) {
+            logActionRejected(
+                event = "clear_rubble",
+                reasonCode = "tile_not_selected"
+            )
+            return
+        }
+        val before = _uiState.value
         
         playSound(GameSound.BUILD_STRUCTURE)
         _uiState.update { currentState ->
             GameEngine.clearRubble(currentState, location)
         }
+        val after = _uiState.value
+        val success = GameTelemetry.eventMessage(after)?.startsWith("🧹 Cleared rubble") == true
+        logActionResult(
+            event = "clear_rubble",
+            before = before,
+            after = after,
+            success = success,
+            details = mapOf("location" to GameTelemetry.coordinatePayload(location))
+        )
     }
     
     fun endTurn() {
+        val before = _uiState.value
+        logActionAttempt(
+            event = "turn_end",
+            details = mapOf(
+                "actionsThisTurn" to before.actionsThisTurn,
+                "maxActionsPerTurn" to before.maxActionsPerTurn
+            )
+        )
         playSound(GameSound.TURN_END)
         _uiState.update { currentState ->
             GameEngine.endTurn(currentState)
         }
+        val after = _uiState.value
+        logActionResult(
+            event = "turn_end",
+            before = before,
+            after = after,
+            success = true,
+            details = mapOf(
+                "previousTurn" to before.turnNumber,
+                "currentTurn" to after.turnNumber,
+                "currentPlayerId" to after.currentPlayer.id
+            )
+        )
         _gameUIState.update { it.copy(selectedTile = null, showBuildMenu = false) }
     }
     
     fun useStructureAbility(location: HexCoordinate) {
+        val before = _uiState.value
+        logActionAttempt(
+            event = "ability",
+            details = mapOf("location" to GameTelemetry.coordinatePayload(location))
+        )
         playSound(GameSound.BUTTON_TAP)
         _uiState.update { currentState ->
             GameEngine.useStructureAbility(currentState, location)
         }
+        val after = _uiState.value
+        val success = !GameTelemetry.isRejectedMessage(GameTelemetry.eventMessage(after))
+        logActionResult(
+            event = "ability",
+            before = before,
+            after = after,
+            success = success,
+            details = mapOf("location" to GameTelemetry.coordinatePayload(location))
+        )
     }
     
     fun getUsableAbilities(): List<Structure> {
