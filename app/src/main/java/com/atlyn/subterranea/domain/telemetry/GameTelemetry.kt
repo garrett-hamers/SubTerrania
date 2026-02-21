@@ -93,6 +93,47 @@ object GameTelemetry {
         writeLog(encodeJson(payload))
     }
 
+    // --- Fun-factor telemetry events ---
+
+    fun logFunDeadRoll(state: GameState, rollTotal: Int) {
+        logState("fun_dead_roll", state, details = mapOf("roll" to rollTotal))
+    }
+
+    fun logFunBuildFrustration(state: GameState, structureType: String, deficit: Map<String, Int>) {
+        logState("fun_build_frustration", state, details = mapOf(
+            "structureType" to structureType,
+            "deficit" to deficit
+        ))
+    }
+
+    fun logFunStuckTurn(state: GameState, consecutiveStuckTurns: Int) {
+        logState("fun_stuck_turn", state, details = mapOf(
+            "consecutiveStuckTurns" to consecutiveStuckTurns
+        ))
+    }
+
+    fun logFunAhaMoment(state: GameState, vpBefore: Int, vpAfter: Int) {
+        logState("fun_aha_moment", state, details = mapOf(
+            "vpBefore" to vpBefore,
+            "vpAfter" to vpAfter,
+            "vpJump" to (vpAfter - vpBefore)
+        ))
+    }
+
+    fun logFunExplorationReward(state: GameState, rewardType: String, value: Int) {
+        logState("fun_exploration_reward", state, details = mapOf(
+            "rewardType" to rewardType,
+            "value" to value
+        ))
+    }
+
+    fun logFunAgencySnapshot(state: GameState, availableCategories: List<String>) {
+        logState("fun_agency_snapshot", state, details = mapOf(
+            "availableCategories" to availableCategories,
+            "categoryCount" to availableCategories.size
+        ))
+    }
+
     fun coordinatePayload(coord: HexCoordinate?): Map<String, Int>? {
         return coord?.let { mapOf("q" to it.q, "r" to it.r) }
     }
