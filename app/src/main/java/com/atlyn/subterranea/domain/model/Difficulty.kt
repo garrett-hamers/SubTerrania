@@ -59,8 +59,8 @@ enum class Difficulty(
                 Resource.CRYSTAL to 0
             )
             NIGHTMARE -> mapOf(
-                Resource.MYCELIUM to 0,
-                Resource.BASALT to 0,
+                Resource.MYCELIUM to 1,
+                Resource.BASALT to 1,
                 Resource.CHITIN to 0,
                 Resource.LICHEN to 0,
                 Resource.IRON_ORE to 0,
@@ -75,8 +75,8 @@ enum class Difficulty(
         get() = when (this) {
             EASY -> 12
             NORMAL -> 14
-            HARD -> 18
-            NIGHTMARE -> 20
+            HARD -> 19
+            NIGHTMARE -> 18
         }
     
     /**
@@ -141,7 +141,7 @@ enum class Difficulty(
         get() = when (this) {
             EASY -> 0.8f     // 20% cheaper
             NORMAL -> 1.0f
-            HARD -> 1.0f     // Same cost, harder through other mechanics
+            HARD -> 1.0f     // Keep costs aligned; differentiate via VP/turn pressure and hazards
             NIGHTMARE -> 1.2f // 20% more expensive
         }
     
@@ -185,7 +185,7 @@ enum class Difficulty(
         get() = when (this) {
             EASY -> 22
             NORMAL -> 18
-            HARD -> 18
-            NIGHTMARE -> 22
+            HARD -> 20
+            NIGHTMARE -> 25
         }
 }

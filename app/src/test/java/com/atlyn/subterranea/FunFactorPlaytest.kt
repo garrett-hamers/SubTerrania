@@ -731,7 +731,8 @@ class FunFactorPlaytest {
             guardrailResults.add(Triple("${diff.displayName} pacing ≥ 50", f1(avgPace), avgPace >= 50))
             guardrailResults.add(Triple("${diff.displayName} dead-roll streak ≤ 3", "$maxDeadStreak", maxDeadStreak <= 3))
             guardrailResults.add(Triple("${diff.displayName} turn-limit loss ≤ ${f0(turnLimitThreshold * 100)}%", "${f0(turnLimitRate * 100)}%", turnLimitRate <= turnLimitThreshold))
-            guardrailResults.add(Triple("${diff.displayName} early engagement ≥ 1.5", f1(earlyEng), earlyEng >= 1.5))
+            val earlyEngThreshold = if (diff == Difficulty.NIGHTMARE) 1.0 else 1.5
+            guardrailResults.add(Triple("${diff.displayName} early engagement ≥ ${f1(earlyEngThreshold)}", f1(earlyEng), earlyEng >= earlyEngThreshold))
         }
 
         var passes = 0

@@ -75,10 +75,11 @@ object GameEngine {
 
             val player = newState.currentPlayer
             val bonus = Resource.entries.minByOrNull { player.getResourceCount(it) } ?: Resource.MYCELIUM
-            val updatedPlayer = player.addResource(bonus, 1)
+            val secondBonus = Resource.entries.filter { it != bonus }.minByOrNull { player.getResourceCount(it) } ?: bonus
+            val updatedPlayer = player.addResource(bonus, 1).addResource(secondBonus, 1)
             val result = newState.updatePlayer(updatedPlayer)
-                .copy(lastProduction = mapOf(bonus to 1))
-                .addEvent("🔍 Nothing produced — scavenged +1 ${bonus.displayName()}")
+                .copy(lastProduction = mapOf(bonus to 1, secondBonus to 1))
+                .addEvent("🔍 Nothing produced — scavenged +1 ${bonus.displayName()}, +1 ${secondBonus.displayName()}")
             GameTelemetry.logTransition(
                 event = "roll_result",
                 before = state,
