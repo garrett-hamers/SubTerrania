@@ -44,6 +44,7 @@ fun GameScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val gameUIState by viewModel.gameUIState.collectAsState()
+    val showTradeMenu by viewModel.showTradeMenu.collectAsState()
     val context = LocalContext.current
     
     // End turn confirmation dialog state
@@ -115,6 +116,20 @@ fun GameScreen(
         }.toSet()
     } else {
         emptySet()
+    }
+
+    val showExplorationModal = uiState.lastExplorationEvent != null &&
+        uiState.lastExplorationEvent !is ExplorationEvent.StableGround
+    val showConsolationModal = !showExplorationModal && uiState.pendingConsolation
+    val showBuildModal = !showExplorationModal && !showConsolationModal && gameUIState.showBuildMenu
+    val showTradeModal = !showExplorationModal && !showConsolationModal && !showBuildModal && showTradeMenu
+    val hasHigherPriorityModal = showExplorationModal || showConsolationModal || showBuildModal || showTradeModal
+    val showEndTurnDialog = !hasHigherPriorityModal && showEndTurnConfirm
+
+    LaunchedEffect(hasHigherPriorityModal) {
+        if (hasHigherPriorityModal && showEndTurnConfirm) {
+            showEndTurnConfirm = false
+        }
     }
 
     Box(
@@ -212,7 +227,7 @@ fun GameScreen(
                         uiState.turnPhase == TurnPhase.MAIN_ACTION,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 10.dp, bottom = 208.dp)
+                        .padding(start = 10.dp, bottom = 125.dp)
                 )
             }
         }
@@ -230,7 +245,9 @@ fun GameScreen(
             onEndTurn = {
                 val actionsLeft = uiState.maxActionsPerTurn - uiState.actionsThisTurn
                 if (actionsLeft > 0 && uiState.turnPhase == TurnPhase.MAIN_ACTION) {
-                    showEndTurnConfirm = true
+                    if (!hasHigherPriorityModal) {
+                        showEndTurnConfirm = true
+                    }
                 } else {
                     viewModel.endTurn()
                 }
@@ -245,11 +262,9 @@ fun GameScreen(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 22.dp)
         )
-        // Trade menu state
-        val showTradeMenu by viewModel.showTradeMenu.collectAsState()
         
         // Build menu popup with backdrop
-        if (gameUIState.showBuildMenu) {
+        if (showBuildModal) {
             // Dark backdrop that dismisses on tap
             Box(
                 modifier = Modifier
@@ -271,7 +286,7 @@ fun GameScreen(
         }
         
         // Trade menu popup with backdrop
-        if (showTradeMenu) {
+        if (showTradeModal) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -294,13 +309,12 @@ fun GameScreen(
             events = uiState.eventLog,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 182.dp, start = 10.dp, end = 10.dp)
+                .padding(bottom = 100.dp, start = 10.dp, end = 10.dp)
                 .fillMaxWidth()
         )
         
         // Exploration event popup with backdrop
-        if (uiState.lastExplorationEvent != null && 
-            uiState.lastExplorationEvent !is ExplorationEvent.StableGround) {
+        if (showExplorationModal) {
             // Dark backdrop
             Box(
                 modifier = Modifier
@@ -317,7 +331,7 @@ fun GameScreen(
         }
         
         // Consolation choice popup (non-producing roll)
-        if (uiState.pendingConsolation) {
+        if (showConsolationModal) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -331,40 +345,52 @@ fun GameScreen(
         }
         
         // End turn confirmation dialog
-        if (showEndTurnConfirm) {
+        if (showEndTurnDialog) {
             val actionsLeft = uiState.maxActionsPerTurn - uiState.actionsThisTurn
             androidx.compose.ui.window.Dialog(
                 onDismissRequest = { showEndTurnConfirm = false }
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_modal_dialog_frame),
-                        contentDescription = null,
-                        modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.FillBounds
-                    )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .widthIn(max = 360.dp)
+                        .border(1.dp, Color(0x6600BCD4), RoundedCornerShape(18.dp)),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xEE111827))
+                ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("End Turn?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Spacer(Modifier.height(12.dp))
+                        Text("End turn now?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Spacer(Modifier.height(10.dp))
                         Text(
-                            "You still have $actionsLeft action${if (actionsLeft > 1) "s" else ""} remaining!\n\nYou can explore tiles, build structures, or trade resources.",
-                            color = Color(0xFFB0BEC5),
+                            "You still have $actionsLeft action${if (actionsLeft > 1) "s" else ""} left.",
+                            color = Color(0xFFCFD8DC),
                             textAlign = TextAlign.Center,
                             fontSize = 14.sp
                         )
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Explore, build, or trade first if you want to use them.",
+                            color = Color(0xFF90A4AE),
+                            textAlign = TextAlign.Center,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(14.dp))
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            androidx.compose.material3.TextButton(
-                                onClick = { showEndTurnConfirm = false }
+                            OutlinedButton(
+                                onClick = { showEndTurnConfirm = false },
+                                modifier = Modifier.weight(1f)
                             ) { Text("Keep Playing", color = Color(0xFF00BCD4)) }
-                            androidx.compose.material3.TextButton(
-                                onClick = { showEndTurnConfirm = false; viewModel.endTurn() }
-                            ) { Text("End Turn", color = Color(0xFFFF9800)) }
+                            Button(
+                                onClick = { showEndTurnConfirm = false; viewModel.endTurn() },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+                            ) { Text("End Turn", color = Color.Black, fontWeight = FontWeight.Bold) }
                         }
                     }
                 }
