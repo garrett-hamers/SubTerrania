@@ -124,7 +124,7 @@ object GameEngine {
             newState = newState.addEvent("🏆 Achievement: Crystal Baron!")
         }
 
-        val result = newState.copy(lastProduction = productionTotals).updatePlayer(player)
+        val result = checkVictory(newState.copy(lastProduction = productionTotals).updatePlayer(player))
         GameTelemetry.logTransition(
             event = "roll_result",
             before = state,
@@ -289,6 +289,7 @@ object GameEngine {
             pendingConsolation = false
         ).addEvent("➡️ Turn $newTurnNumber - ${state.players[nextPlayerIndex].name}'s turn")
             .let { checkTurnLimit(it) }
+            .let { checkVictory(it) }
 
         GameTelemetry.logTransition(
             event = "turn_end",
