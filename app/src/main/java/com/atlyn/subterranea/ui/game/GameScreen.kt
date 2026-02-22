@@ -406,6 +406,18 @@ fun GameScreen(
                 modifier = Modifier.fillMaxSize()
             )
         }
+
+        // Defeat screen (turn limit reached)
+        if (uiState.gameOver && uiState.winner == null) {
+            DefeatScreen(
+                finalVP = uiState.totalVPFor(uiState.currentPlayer),
+                vpTarget = uiState.victoryPointsToWin,
+                turnsPlayed = uiState.turnNumber,
+                metaProgression = metaProg,
+                onRestart = { viewModel.resetGame() },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         
         } // end if (!showDifficultyMenu)
         
@@ -1586,6 +1598,96 @@ fun VictoryScreen(
                     modifier = Modifier.scale(pulseScale(1f, 1.05f, 1000))
                 ) {
                     Text("Play Again")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DefeatScreen(
+    finalVP: Int,
+    vpTarget: Int,
+    turnsPlayed: Int,
+    metaProgression: MetaProgression,
+    onRestart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
+
+    val cardScale by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "cardScale"
+    )
+
+    Box(
+        modifier = modifier.background(Color(0xEE000000)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier.scale(cardScale).widthIn(max = 340.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "TIME'S UP",
+                    color = Color(0xFFFF9800),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 30.sp
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "The caves have collapsed...",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 16.sp
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    "$finalVP / $vpTarget VP",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+                Text(
+                    "Reached turn $turnsPlayed",
+                    color = Color.Gray,
+                    fontSize = 13.sp
+                )
+                Spacer(Modifier.height(8.dp))
+
+                val vpShort = vpTarget - finalVP
+                if (vpShort > 0) {
+                    Text(
+                        "Just $vpShort VP short!",
+                        color = Color(0xFFFF9800),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Divider(color = Color.Gray.copy(alpha = 0.3f))
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Lifetime: ${metaProgression.gamesWon}W/${metaProgression.gamesPlayed}G",
+                    color = Color.Gray,
+                    fontSize = 11.sp
+                )
+                Spacer(Modifier.height(12.dp))
+
+                Button(
+                    onClick = onRestart,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+                ) {
+                    Text("Try Again", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             }
         }
