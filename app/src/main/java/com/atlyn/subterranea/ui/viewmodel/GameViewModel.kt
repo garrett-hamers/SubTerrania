@@ -787,6 +787,16 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
         _gameUIState.update { it.copy(selectedTile = null, showBuildMenu = false) }
+        
+        // Check for game end after turn
+        if (after.gameOver && !before.gameOver) {
+            if (after.winner != null) {
+                playSound(GameSound.VICTORY)
+                recordGameEnd(true)
+            } else {
+                recordGameEnd(false)
+            }
+        }
     }
     
     fun useStructureAbility(location: HexCoordinate) {

@@ -182,8 +182,10 @@ def hex_to_screen_pixel(q, r, screen_w=SCREEN_W, screen_h=SCREEN_H):
 def restart_app():
     run_adb(["shell", "am", "force-stop", PACKAGE_NAME])
     time.sleep(1)
+    run_adb(["shell", "pm", "clear", PACKAGE_NAME])
+    time.sleep(1)
     run_adb(["shell", "am", "start", "-n", PACKAGE_NAME + "/" + ACTIVITY_NAME])
-    time.sleep(5)
+    time.sleep(6)
 
 def get_turn_number(root):
     for elem in root.iter():
@@ -237,24 +239,30 @@ def select_buildable_tile(tile_list):
 def play_game(difficulty, game_idx):
     print("Starting Game %d - %s" % (game_idx, difficulty))
 
-    # Select difficulty
+    # Check current state - game may auto-start or need difficulty selection
     root = dump_ui(retries=5)
-    diff_btn = find_bounds(root, text=difficulty, exact=True)
-    if not diff_btn:
-        print("Waiting for difficulty screen...")
-        for _ in range(5):
+    ui_text = " ".join(all_texts(root)) if root else ""
+
+    if "ROLL DICE" in ui_text or "MAIN ACTION" in ui_text:
+        # Game already started (auto-start after pm clear)
+        pass
+    elif "Select Difficulty" in ui_text or root is not None:
+        # Try to find and tap difficulty button
+        diff_btn = find_bounds(root, text=difficulty, exact=True)
+        if not diff_btn:
+            for _ in range(5):
+                time.sleep(2)
+                root = dump_ui()
+                if root:
+                    ui_text = " ".join(all_texts(root))
+                    if "ROLL DICE" in ui_text or "MAIN ACTION" in ui_text:
+                        break  # Game auto-started
+                    diff_btn = find_bounds(root, text=difficulty, exact=True)
+                    if diff_btn:
+                        break
+        if diff_btn:
+            tap(*diff_btn)
             time.sleep(2)
-            root = dump_ui()
-            diff_btn = find_bounds(root, text=difficulty, exact=True)
-            if diff_btn:
-                break
-
-    if not diff_btn:
-        print("Could not find difficulty button: %s" % difficulty)
-        return None
-
-    tap(*diff_btn)
-    time.sleep(2)
 
     turn = 0
     start_time = time.time()
@@ -270,13 +278,17 @@ def play_game(difficulty, game_idx):
             continue
 
         # ---- Check victory ----
-        if has_text(root, "VICTORY!", exact=False):
+        if has_text(root, "VICTORY!", exact=True) or has_text(root, "VICTORY", exact=True):
             print("  -> VICTORY on turn %d" % turn)
             return {"result": "WIN", "turn": turn, "duration": time.time() - start_time}
 
         # ---- Check defeat ----
+        if has_text(root, "TIME'S UP", exact=True) or has_text(root, "TIME\u2019S UP", exact=True):
+            print("  -> DEFEAT (turn limit) on turn %d" % turn)
+            return {"result": "LOSS", "turn": turn, "duration": time.time() - start_time}
         play_again = find_bounds(root, text="Play Again", exact=True)
-        if play_again and not has_text(root, "VICTORY!", exact=False):
+        try_again = find_bounds(root, text="Try Again", exact=True)
+        if (play_again or try_again) and not has_text(root, "VICTORY", exact=True):
             print("  -> DEFEAT on turn %d" % turn)
             return {"result": "LOSS", "turn": turn, "duration": time.time() - start_time}
 
@@ -526,8 +538,12 @@ if __name__ == "__main__":
             # Prepare for next game
             root = dump_ui()
             play_again = find_bounds(root, text="Play Again", exact=True)
+            try_again = find_bounds(root, text="Try Again", exact=True)
             if play_again:
                 tap(*play_again)
+                time.sleep(3)
+            elif try_again:
+                tap(*try_again)
                 time.sleep(3)
             else:
                 restart_app()

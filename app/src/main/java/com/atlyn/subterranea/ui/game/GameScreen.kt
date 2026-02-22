@@ -810,7 +810,7 @@ fun ActionButtons(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Roll Dice button - pulses when it's time to roll
-            val shouldRoll = uiState.turnPhase == TurnPhase.ROLL_DICE
+            val shouldRoll = uiState.turnPhase == TurnPhase.ROLL_DICE && !uiState.gameOver
             ActionButton(
                 text = "Roll",
                 enabled = shouldRoll,
@@ -819,7 +819,7 @@ fun ActionButtons(
             )
             
             // Explore button (New)
-            val canExplore = selectedTile != null && selectedTile in explorableTiles
+            val canExplore = selectedTile != null && selectedTile in explorableTiles && !uiState.gameOver
             if (canExplore) {
                 ActionButton(
                     text = "Explore",
@@ -831,7 +831,7 @@ fun ActionButtons(
             }
 
             // Build button
-            val canBuild = uiState.turnPhase == TurnPhase.MAIN_ACTION && 
+            val canBuild = uiState.turnPhase == TurnPhase.MAIN_ACTION && !uiState.gameOver &&
                 selectedTile != null &&
                 uiState.actionsThisTurn < uiState.maxActionsPerTurn
             
@@ -1626,7 +1626,9 @@ fun DefeatScreen(
     )
 
     Box(
-        modifier = modifier.background(Color(0xEE000000)),
+        modifier = modifier
+            .background(Color(0xEE000000))
+            .clickable { /* consume touch to prevent interaction with game behind */ },
         contentAlignment = Alignment.Center
     ) {
         Card(
