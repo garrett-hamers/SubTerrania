@@ -4,6 +4,7 @@ import sys
 import time
 import subprocess
 import re
+import math
 import xml.etree.ElementTree as ET
 import random
 
@@ -13,19 +14,42 @@ ADB_DEVICE = "emulator-5554"
 PACKAGE_NAME = "com.atlyn.subterranea"
 ACTIVITY_NAME = ".MainActivity"
 DIFFICULTIES = ["Easy", "Normal", "Hard", "Nightmare"]
-GAMES_PER_DIFFICULTY = 5
+GAMES_PER_DIFFICULTY = 10
 MAX_TURNS = 100
 LOG_FILE = "game_stats.csv"
+DUMP_FILE = "window_dump.xml"
+
+SCREEN_W = 1080
+SCREEN_H = 2220
+
+# Hex tiles at distance 2 (Crust layer, first explorable ring)
+DIST2_TILES = [
+    (2, 0), (1, 1), (0, 2), (-1, 2), (-2, 2), (-2, 1),
+    (-2, 0), (-1, -1), (0, -2), (1, -2), (2, -2), (2, -1),
+]
+
+# Surface ring at distance 1 (revealed at start, good for building)
+DIST1_TILES = [(1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
+
+# Distance 3 tiles (Mantle layer)
+DIST3_TILES = [
+    (3, 0), (2, 1), (1, 2), (0, 3), (-1, 3), (-2, 3), (-3, 3),
+    (-3, 2), (-3, 1), (-3, 0), (-2, -1), (-1, -2), (0, -3),
+    (1, -3), (2, -3), (3, -3), (3, -2), (3, -1),
+]
+
+# Consolation overlay button labels
+CONSOLATION_CHOICES = ["Scavenge", "Hustle", "Barter"]
+
+# ---- ADB helpers ----
 
 def run_adb(args):
     """Run an ADB command and return output."""
     cmd = [ADB_PATH, "-s", ADB_DEVICE] + args
     try:
-        # Increased timeout for ADB commands
         result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=20)
         return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        # print(f"ADB Error: {e}") 
+    except subprocess.CalledProcessError:
         return ""
     except subprocess.TimeoutExpired:
         print("ADB Timeout")
@@ -38,240 +62,474 @@ def swipe(x1, y1, x2, y2, duration=300):
     run_adb(["shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration)])
 
 def dump_ui(retries=3):
-    """Dump UI hierarchy to local file."""
+    """Dump UI hierarchy to local file and parse it."""
     for i in range(retries):
-        # Dump to device sdcard
         run_adb(["shell", "uiautomator", "dump", "/sdcard/window_dump.xml"])
-        # Pull to local
-        run_adb(["pull", "/sdcard/window_dump.xml", "window_dump.xml"])
-        
-        if os.path.exists("window_dump.xml") and os.path.getsize("window_dump.xml") > 0:
+        run_adb(["pull", "/sdcard/window_dump.xml", DUMP_FILE])
+        if os.path.exists(DUMP_FILE) and os.path.getsize(DUMP_FILE) > 0:
             try:
-                tree = ET.parse("window_dump.xml")
+                tree = ET.parse(DUMP_FILE)
                 return tree.getroot()
             except ET.ParseError:
                 pass
         time.sleep(1)
     return None
 
-def find_bounds(node, text=None, content_desc=None, resource_id=None):
-    """Find bounds of a node matching criteria."""
+# ---- UI search helpers ----
+
+def find_bounds(node, text=None, content_desc=None, resource_id=None, exact=True):
+    """Find center coords of a node matching criteria.
+    exact=True: text must match exactly (==).
+    exact=False: text can be a substring.
+    """
     if node is None:
         return None
-        
-    # Check current node
+
     match = True
-    if text and text not in node.attrib.get('text', ''):
-        match = False
-    if content_desc and content_desc not in node.attrib.get('content-desc', ''):
-        match = False
-    if resource_id and resource_id not in node.attrib.get('resource-id', ''):
-        match = False
-        
-    if match and (text or content_desc or resource_id):
-        bounds_str = node.attrib.get('bounds', '')
-        # bounds format: [x1,y1][x2,y2]
-        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', bounds_str)
+    if text is not None:
+        node_text = node.attrib.get("text", "")
+        if exact:
+            if node_text != text:
+                match = False
+        else:
+            if text not in node_text:
+                match = False
+    if content_desc is not None:
+        node_cd = node.attrib.get("content-desc", "")
+        if exact:
+            if node_cd != content_desc:
+                match = False
+        else:
+            if content_desc not in node_cd:
+                match = False
+    if resource_id is not None:
+        if resource_id not in node.attrib.get("resource-id", ""):
+            match = False
+
+    if match and (text is not None or content_desc is not None or resource_id is not None):
+        bounds_str = node.attrib.get("bounds", "")
+        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
         if m:
             x1, y1, x2, y2 = map(int, m.groups())
             return (x1 + x2) // 2, (y1 + y2) // 2
 
-    # Recurse
     for child in node:
-        res = find_bounds(child, text, content_desc, resource_id)
+        res = find_bounds(child, text, content_desc, resource_id, exact)
         if res:
             return res
     return None
 
-def find_node_by_text(root, text):
-    return find_bounds(root, text=text)
+
+def find_all_by_text(node, text, exact=True, results=None):
+    """Return list of (cx, cy) for all nodes matching text."""
+    if results is None:
+        results = []
+    if node is None:
+        return results
+    node_text = node.attrib.get("text", "")
+    matched = (node_text == text) if exact else (text in node_text)
+    if matched:
+        bounds_str = node.attrib.get("bounds", "")
+        m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds_str)
+        if m:
+            x1, y1, x2, y2 = map(int, m.groups())
+            results.append(((x1 + x2) // 2, (y1 + y2) // 2))
+    for child in node:
+        find_all_by_text(child, text, exact, results)
+    return results
+
+
+def has_text(root, text, exact=True):
+    """Check if any node contains the given text."""
+    return find_bounds(root, text=text, exact=exact) is not None
+
+
+def all_texts(node, texts=None):
+    """Collect all text values in the UI tree."""
+    if texts is None:
+        texts = []
+    if node is None:
+        return texts
+    t = node.attrib.get("text", "")
+    if t:
+        texts.append(t)
+    for child in node:
+        all_texts(child, texts)
+    return texts
+
+# ---- Hex coordinate math ----
+
+def hex_to_screen_pixel(q, r, screen_w=SCREEN_W, screen_h=SCREEN_H):
+    """Convert axial hex coords to screen pixel coords for tapping."""
+    top_pad = 825   # 300dp * 2.75
+    bot_pad = 687   # 250dp * 2.75
+    canvas_h = screen_h - top_pad - bot_pad  # ~708
+    canvas_w = screen_w  # 1080
+
+    offset_x = canvas_w / 2.0   # 540
+    offset_y = canvas_h / 2.0 - 50  # 304
+
+    hex_size = 70.0
+    x = hex_size * (math.sqrt(3) * q + math.sqrt(3) / 2.0 * r) + offset_x
+    y = hex_size * (3.0 / 2.0 * r) + offset_y
+
+    screen_x = int(x)
+    screen_y = int(y + top_pad)
+    return screen_x, screen_y
+
+# ---- App control ----
 
 def restart_app():
     run_adb(["shell", "am", "force-stop", PACKAGE_NAME])
     time.sleep(1)
-    run_adb(["shell", "am", "start", "-n", f"{PACKAGE_NAME}/{ACTIVITY_NAME}"])
+    run_adb(["shell", "am", "start", "-n", PACKAGE_NAME + "/" + ACTIVITY_NAME])
     time.sleep(5)
 
 def get_turn_number(root):
-    # Find text "Turn X"
-    # Traversing all nodes to find text starting with "Turn "
     for elem in root.iter():
-        text = elem.attrib.get('text', '')
-        if text.startswith('Turn '):
+        text = elem.attrib.get("text", "")
+        if text.startswith("Turn "):
             try:
-                return int(text.split(' ')[1])
-            except:
+                return int(text.split(" ")[1])
+            except (ValueError, IndexError):
                 pass
     return 0
 
-def get_event_log(root):
-    events = []
-    # Just grab any text that looks like a log message or just all text in the log area if identifiable
-    # Based on GameScreen.kt, EventLog is at the bottom.
-    # We'll just collect all text for analysis? Too noisy.
-    # Let's search for specific keywords from ExplorationEvent or Building.
-    return events
+# ---- Tile selection helpers ----
+
+def try_tap_tile_and_check(q, r, button_text, sleep_after=0.5):
+    """Tap a hex tile at (q,r), wait, dump UI, check if button_text appeared."""
+    sx, sy = hex_to_screen_pixel(q, r)
+    if sx < 0 or sx > SCREEN_W or sy < 0 or sy > SCREEN_H:
+        return None
+    tap(sx, sy)
+    time.sleep(sleep_after)
+    root = dump_ui(retries=1)
+    if root is None:
+        return None
+    btn = find_bounds(root, text=button_text, exact=True)
+    if btn:
+        return root, btn
+    return None
+
+
+def select_explorable_tile(tile_list):
+    """Try tapping tiles from the list until Explore button appears.
+    Returns (root, explore_btn_coords) or None."""
+    for q, r in tile_list:
+        result = try_tap_tile_and_check(q, r, "Explore")
+        if result:
+            return result
+    return None
+
+
+def select_buildable_tile(tile_list):
+    """Try tapping revealed tiles until Build button appears.
+    Returns (root, build_btn_coords) or None."""
+    for q, r in tile_list:
+        result = try_tap_tile_and_check(q, r, "Build")
+        if result:
+            return result
+    return None
+
+# ---- Main game loop ----
 
 def play_game(difficulty, game_idx):
-    print(f"Starting Game {game_idx} - {difficulty}")
-    
-    # Needs to be on difficulty screen
+    print("Starting Game %d - %s" % (game_idx, difficulty))
+
+    # Select difficulty
     root = dump_ui(retries=5)
-    diff_btn = find_node_by_text(root, difficulty)
-    
-    # Retry finding difficulty if failed (maybe animation)
+    diff_btn = find_bounds(root, text=difficulty, exact=True)
     if not diff_btn:
-        print(f"Waiting for difficulty screen...")
+        print("Waiting for difficulty screen...")
         for _ in range(5):
-             time.sleep(2)
-             root = dump_ui()
-             diff_btn = find_node_by_text(root, difficulty)
-             if diff_btn: break
-             
+            time.sleep(2)
+            root = dump_ui()
+            diff_btn = find_bounds(root, text=difficulty, exact=True)
+            if diff_btn:
+                break
+
     if not diff_btn:
-        print(f"Could not find difficulty button: {difficulty}")
+        print("Could not find difficulty button: %s" % difficulty)
         return None
 
     tap(*diff_btn)
-    time.sleep(1)
-    
+    time.sleep(2)
+
     turn = 0
     start_time = time.time()
-    last_tap_pos = None
-    
-    # Fast loop
-    no_action_count = 0
-    
+    explore_idx = 0  # cycles through explorable tiles
+    all_explorable = DIST2_TILES + DIST3_TILES
+    build_attempts_this_turn = 0
+    max_build_attempts = 2
+
     while turn < MAX_TURNS:
-        root = dump_ui(retries=1) # optimize retries
+        root = dump_ui(retries=2)
         if root is None:
             time.sleep(1)
             continue
-            
-        # Check Win/Loss
-        if find_node_by_text(root, "VICTORY!"):
-            print("Victory detected!")
-            return {"result": "WIN", "turn": turn, "duration": time.time() - start_time}
-        
-        # Check if we died or lost (Game Over?) - code mentioned VictoryScreen, not sure about loss screen strictly
-        # But let's assume "Play Again" button appears on game over.
-        play_again = find_node_by_text(root, "Play Again")
-        if play_again:
-             print("Game Over detected!")
-             # Determine if win or loss based on text?
-             # Assuming if "VICTORY" not found but "Play Again" is, maybe loss?
-             # Or maybe "VICTORY" is hidden.
-             # Wait, VictoryScreen has "Play Again".
-             return {"result": "UNKNOWN_END", "turn": turn, "duration": time.time() - start_time}
 
+        # ---- Check victory ----
+        if has_text(root, "VICTORY!", exact=False):
+            print("  -> VICTORY on turn %d" % turn)
+            return {"result": "WIN", "turn": turn, "duration": time.time() - start_time}
+
+        # ---- Check defeat ----
+        play_again = find_bounds(root, text="Play Again", exact=True)
+        if play_again and not has_text(root, "VICTORY!", exact=False):
+            print("  -> DEFEAT on turn %d" % turn)
+            return {"result": "LOSS", "turn": turn, "duration": time.time() - start_time}
+
+        # ---- Update turn ----
         new_turn = get_turn_number(root)
         if new_turn > turn:
             turn = new_turn
-            print(f"Turn {turn}")
-            
-        # Priority 1: End Turn if Actions Used (Check "End" button enabled?)
-        # Composable buttons don't always map to XML enabled state clearly, but text might be "End"
-        
-        # Priority 2: Clear Rubble
-        clear_btn = find_node_by_text(root, "Clear") # "🧹 Clear"
-        if clear_btn:
-             # Need to check if we can click it? Just try.
-             # In Compose, if disabled, it might still have text but not clickable?
-             # Or color changed.
-             tap(*clear_btn)
-             time.sleep(1)
+            build_attempts_this_turn = 0
+            print("  Turn %d" % turn)
 
-        # Priority 3: Build
-        # Randomly tap map to select a tile
-        # Map area roughly middle of screen.
-        # dump_ui gives resolution? bounds of root.
-        # root bounds usually [0,0][width,height]
-        try:
-             root_bounds = root.attrib.get('bounds') # [0,0][1080,2400]
-             m = re.match(r'\[0,0\]\[(\d+),(\d+)\]', root_bounds)
-             w, h = int(m.group(1)), int(m.group(2))
-        except:
-             w, h = 1080, 2400
-        
-        # Tap random hex in middle
-        rx = random.randint(100, w-100)
-        ry = random.randint(h//3, 2*h//3)
-        
-        # Check if we should explore (Priority: Check for "Explore" button)
-        explore_btn = find_node_by_text(root, "Explore")
-        if explore_btn:
-             tap(*explore_btn)
-             # print("Action: Clicked Explore Button")
-             # time.sleep(0.2)
-             no_action_count = 0
-             
-        # Tap random hex in middle if no obvious action
+        ui_texts = all_texts(root)
+        texts_joined = " ".join(ui_texts)
+
+        # ---- Phase: ROLL_DICE ----
+        if "ROLL DICE" in texts_joined:
+            roll_btn = find_bounds(root, text="Roll", exact=True)
+            if roll_btn:
+                print("  Rolling dice")
+                tap(*roll_btn)
+                time.sleep(1.0)
+                continue
+
+        # ---- Consolation overlay ----
+        consolation_found = False
+        for choice in CONSOLATION_CHOICES:
+            btn = find_bounds(root, text=choice, exact=True)
+            if btn:
+                print("  Consolation: %s" % choice)
+                tap(*btn)
+                time.sleep(0.8)
+                consolation_found = True
+                break
+        if consolation_found:
+            continue
+
+        # ---- Interactive event overlay ----
+        # Events may show buttons like "OK", "Accept", "Decline", etc.
+        for evt_btn_text in ["OK", "Accept", "Dismiss"]:
+            evt_btn = find_bounds(root, text=evt_btn_text, exact=True)
+            if evt_btn:
+                print("  Event: tapped %s" % evt_btn_text)
+                tap(*evt_btn)
+                time.sleep(0.8)
+                break
         else:
-             tap(rx, ry)
-             # time.sleep(0.2)
-             no_action_count += 1
-        
-        # Priority: Roll Dice (Check every few loops or if found)
-        # To be fast, check root
-        
-        # Check build button
-        build_btn = find_node_by_text(root, "Build")
-        if build_btn:
-            tap(*build_btn)
-            time.sleep(0.5)
-            # Pick a structure - just tap generally in the center-ish or look for text
-            # Lantern is usually at the top of the list
-            tap(w//2, h//2) 
-            time.sleep(0.5)
-            no_action_count = 0
-            
-        roll_btn = find_node_by_text(root, "Roll")
-        if roll_btn:
-            tap(*roll_btn)
-            time.sleep(1) 
-            no_action_count = 0
-            
-        end_btn = find_node_by_text(root, "End")
-        if end_btn:
-            tap(*end_btn)
-            time.sleep(0.5)
-            no_action_count = 0
+            evt_btn = None
+        if evt_btn:
+            continue
 
-        # Dismiss events (Tap center)
-        if no_action_count > 5:
-             tap(w//2, h//2)
-             no_action_count = 0
-            
+        # ---- Build menu already open ----
+        if "Build Structure" in texts_joined:
+            built_from_menu = False
+            for s in ["Lantern Post", "Mining Outpost", "Fungal Farm",
+                       "Beetle Stable", "Deep Excavator", "Crystal Refinery", "Core Anchor"]:
+                s_btn = find_bounds(root, text=s, exact=False)
+                if s_btn:
+                    tap(*s_btn)
+                    time.sleep(0.8)
+                    root_check = dump_ui(retries=1)
+                    if root_check and "Build Structure" not in " ".join(all_texts(root_check)):
+                        print("  Built %s" % s)
+                        built_from_menu = True
+                        break
+            if not built_from_menu:
+                # Can't afford anything -- dismiss menu
+                close_btn = find_bounds(root, text="\u2715", exact=True)
+                if close_btn:
+                    tap(*close_btn)
+                else:
+                    tap(50, SCREEN_H // 2)
+                time.sleep(0.5)
+            continue
+
+        # ---- End-turn dialog already visible ----
+        if "End turn now?" in texts_joined:
+            confirm = find_bounds(root, text="End Turn", exact=True)
+            if not confirm:
+                confirm = find_bounds(root, text="End Turn", exact=False)
+            if confirm:
+                print("  Confirming end turn")
+                tap(*confirm)
+                time.sleep(1.0)
+                continue
+
+        # ---- Phase: MAIN_ACTION ----
+        # Check if actions remain (look for "Actions: X" with X > 0)
+        actions_left = True
+        for t in ui_texts:
+            if t.startswith("Actions:"):
+                try:
+                    count = int(t.split(":")[1].strip())
+                    if count <= 0:
+                        actions_left = False
+                except (ValueError, IndexError):
+                    pass
+
+        if not actions_left:
+            # No actions left -- end turn
+            end_btn = find_bounds(root, text="End", exact=True)
+            if end_btn:
+                print("  Ending turn (no actions)")
+                tap(*end_btn)
+                time.sleep(1.0)
+                for _ in range(3):
+                    root2 = dump_ui(retries=1)
+                    if root2:
+                        confirm = find_bounds(root2, text="End Turn", exact=True)
+                        if not confirm:
+                            confirm = find_bounds(root2, text="End Turn", exact=False)
+                        if confirm:
+                            tap(*confirm)
+                            time.sleep(1.0)
+                            break
+                    time.sleep(0.5)
+            continue
+
+        # Actions remain -- try to explore or build
+        # Strategy: try exploring first, then building if nothing to explore
+
+        # 1) Try to explore: cycle through explorable tile coords
+        explored = False
+        attempts = min(len(all_explorable), 6)  # try a few per turn
+        for _ in range(attempts):
+            q, r = all_explorable[explore_idx % len(all_explorable)]
+            explore_idx += 1
+            sx, sy = hex_to_screen_pixel(q, r)
+            if sx < 10 or sx > SCREEN_W - 10 or sy < 10 or sy > SCREEN_H - 10:
+                continue
+            tap(sx, sy)
+            time.sleep(0.5)
+            root2 = dump_ui(retries=1)
+            if root2 is None:
+                continue
+            exp_btn = find_bounds(root2, text="Explore", exact=True)
+            if exp_btn:
+                print("  Exploring tile (%d, %d)" % (q, r))
+                tap(*exp_btn)
+                time.sleep(0.8)
+                explored = True
+                break
+
+        if explored:
+            continue
+
+        # 2) Try to build on a revealed surface tile (limit attempts)
+        built = False
+        if build_attempts_this_turn < max_build_attempts:
+            build_attempts_this_turn += 1
+            shuffled_surface = list(DIST1_TILES) + [(0, 0)]
+            random.shuffle(shuffled_surface)
+            for q, r in shuffled_surface:
+                sx, sy = hex_to_screen_pixel(q, r)
+                tap(sx, sy)
+                time.sleep(0.5)
+                root2 = dump_ui(retries=1)
+                if root2 is None:
+                    continue
+                build_btn = find_bounds(root2, text="Build", exact=True)
+                if build_btn:
+                    tap(*build_btn)
+                    time.sleep(0.8)
+                    # Build menu should appear -- pick first available structure
+                    root3 = dump_ui(retries=1)
+                    if root3:
+                        after_texts = " ".join(all_texts(root3))
+                        if "Build Structure" in after_texts:
+                            for s in ["Lantern Post", "Mining Outpost", "Fungal Farm",
+                                       "Beetle Stable", "Deep Excavator", "Crystal Refinery", "Core Anchor"]:
+                                s_btn = find_bounds(root3, text=s, exact=False)
+                                if s_btn:
+                                    tap(*s_btn)
+                                    time.sleep(1.0)
+                                    # Check if menu closed (build succeeded)
+                                    root4 = dump_ui(retries=1)
+                                    if root4 and "Build Structure" not in " ".join(all_texts(root4)):
+                                        print("  Building %s at (%d, %d)" % (s, q, r))
+                                        built = True
+                                        break
+                        # Dismiss build menu if still open
+                        if not built:
+                            close_btn = find_bounds(root3, text="\u2715", exact=True)
+                            if close_btn:
+                                tap(*close_btn)
+                            else:
+                                tap(50, SCREEN_H // 2)
+                            time.sleep(0.5)
+                    if built:
+                        break
+
+        if built or explored:
+            continue
+
+        # 3) Nothing worked -- end turn
+        end_btn = find_bounds(root, text="End", exact=True)
+        if end_btn:
+            print("  Ending turn (nothing to do)")
+            tap(*end_btn)
+            time.sleep(1.0)
+            # Handle confirmation dialog -- retry a few times
+            for _ in range(3):
+                root2 = dump_ui(retries=1)
+                if root2:
+                    # Check if dialog appeared
+                    confirm = find_bounds(root2, text="End Turn", exact=True)
+                    if confirm:
+                        tap(*confirm)
+                        time.sleep(1.0)
+                        break
+                    # Also try substring match
+                    confirm2 = find_bounds(root2, text="End Turn", exact=False)
+                    if confirm2:
+                        tap(*confirm2)
+                        time.sleep(1.0)
+                        break
+                time.sleep(0.5)
+            continue
+
+        # Fallback: tap center to dismiss any overlay
+        tap(SCREEN_W // 2, SCREEN_H // 2)
+        time.sleep(0.5)
+
     return {"result": "TIMEOUT", "turn": turn, "duration": time.time() - start_time}
+
+# ---- Stats logging ----
 
 def log_stats(difficulty, game_idx, stats):
     with open(LOG_FILE, "a") as f:
-        f.write(f"{difficulty},{game_idx},{stats['result']},{stats['turn']},{stats['duration']:.2f}\n")
+        f.write("%s,%d,%s,%d,%.2f\n" % (
+            difficulty, game_idx, stats["result"], stats["turn"], stats["duration"]))
+
+# ---- Main entry point ----
 
 if __name__ == "__main__":
     if not os.path.exists(LOG_FILE):
         with open(LOG_FILE, "w") as f:
             f.write("Difficulty,Game,Result,Turns,Duration\n")
-            
+
     for diff in DIFFICULTIES:
         restart_app()
-        # Wait for start
         time.sleep(5)
-        
+
         for i in range(1, GAMES_PER_DIFFICULTY + 1):
             stats = play_game(diff, i)
             if stats:
                 log_stats(diff, i, stats)
-                
+
             # Prepare for next game
-            # If we are at Victory screen, click "Play Again"
             root = dump_ui()
-            play_again = find_node_by_text(root, "Play Again")
+            play_again = find_bounds(root, text="Play Again", exact=True)
             if play_again:
                 tap(*play_again)
+                time.sleep(3)
             else:
-                # Force restart if stuck
                 restart_app()
-            
-            time.sleep(3)
+                time.sleep(3)
 
