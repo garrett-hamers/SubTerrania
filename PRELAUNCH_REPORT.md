@@ -299,6 +299,54 @@ Source: `app/build/test-results/testDebugUnitTest/TEST-com.atlyn.subterranea.Aut
     Beetle Stable     55% / 1.1
     Deep Excavator    23% / 0.3
     Core Anchor       12% / 0.1
+```
+
+---
+
+## Appendix D: Implementation Status (Post-Report)
+
+After publishing this report, the following items were implemented in three follow-up commits on `master`:
+
+### Phase A — `914a727` (security, balance, retention P0/P1 fixes)
+- **P0-1 Keystore untracked**: `keystore` removed from git index, `.gitignore` updated. New `SECURITY.md` documents the manual key-rotation procedure (filter-repo + force-push + Play Console upload-key reset) — this remains a human follow-up because the secret is still present in historical commits.
+- **P0-3 Signing config restored**: `app/build.gradle.kts` now reads `KEYSTORE_PASSWORD` / `KEY_PASSWORD` from environment variables; `signingConfigs.release` re-enabled.
+- **P1-1 allowBackup audit**: `AndroidManifest.xml` now sets `android:allowBackup="false"` to prevent unintended user-data exfiltration via adb backup.
+- **P1-2 Difficulty rebalance**: `Difficulty.kt` updated — Easy CRYSTAL starting resource set to 0; VP curve now 13 / 15 / 19 / 18 (Easy/Normal/Hard/Nightmare); trade ratios 2 / 3 / 3 / 4. `Player.kt` resource clamps added; `EXCAVATOR` cost, `CORE_ANCHOR` VP, and `MASTER_BUILDER` reward retuned.
+- **P1-3 Master Builder check**: `StructureEngine.kt` now requires distinct structure types for the achievement instead of total count.
+- **Empirical result** (100 games × 4 difficulties × Aggressive AI): Easy 88%, Normal 76%, Hard 72%, Nightmare 24% — smooth curve.
+
+### Phase B — `755e686` (build & dependency upgrades)
+- **P0-2 Stale Compose BOM**: `composeBom 2023.08.00 → 2024.12.01`; `coreKtx 1.12.0 → 1.15.0`; `lifecycleRuntimeKtx 2.7.0 → 2.8.7`; `activityCompose 1.8.2 → 1.9.3`; `junitVersion 1.1.5 → 1.2.1`; `espressoCore 3.5.1 → 3.6.1`.
+- **P0-4 targetSdk bump**: `compileSdk` and `targetSdk` 34 → 35 (Play Store policy from August 2025); `platforms;android-35` and `build-tools;35.0.0` added to local SDK.
+- **P1-12 ProGuard tightening**: removed broad `-keep class androidx.compose.**` and `-keep class androidx.lifecycle.**` rules. Kept Kotlin metadata, coroutines, model data classes, ViewModels, and `Log.*` strip rules.
+- **Build verification**: `:app:testDebugUnitTest` BUILD SUCCESSFUL; `:app:minifyReleaseWithR8` BUILD SUCCESSFUL (`assembleRelease` only fails at packaging when `KEYSTORE_PASSWORD` is unset, which is expected/environmental).
+- **Known cosmetic warnings** (deferred): `Divider → HorizontalDivider` deprecation, `Window.statusBarColor` / `navigationBarColor` deprecated on API 35 — both compile and run, accepted for launch.
+
+### Phase C — `b4de404` (P0-5 persistence + P1-9 ability button + initial a11y)
+- **P0-5 GameState persistence** (launch blocker confirmed via earlier force-stop test): new `domain/persistence/GameStatePersistence.kt` uses `org.json` to serialize the full `GameState` (board, players, structures, resources, turn metadata, achievements, event log, dice/production history) to a SharedPreferences entry. Schema versioned (`v=1`); volatile sealed-class fields (`lastExplorationEvent`, `pendingInteractiveEvent`, `pendingEventCoord`) intentionally excluded as modal UI overlays the user re-triggers. `deserialize` returns `null` on parse failure or version mismatch (treated as no-saved-game). `GameViewModel` saves on every successful `endTurn()`, in `onCleared()`, at game start, and on `MainActivity.onPause()`. Save cleared on game-over, reset, discard, or new-game start. **Difficulty selection screen** now shows green Resume button + Discard CTA when a saved game exists.
+- **P1-9 Ability button**: new conditional Ability action-bar button (yellow, with count badge `Ability·N` when N > 1), only rendered when usable abilities exist and `turnPhase == MAIN_ACTION`. New `AbilityMenu` Composable lists usable abilities with content descriptions. Previously, abilities required tapping the structure tile and were used in only 21/100 simulated games.
+- **P1-6 Accessibility (initial pass)**: `ActionButton` now accepts a `contentDescription` parameter and applies `Modifier.semantics`. All six action-bar buttons (Roll / Explore / Build / Clear / Trade / Ability / End) carry descriptive labels with disabled-state suffix. Resume / Discard / Ability menu items also have semantics. Full a11y audit (structure cards in `BuildMenu`, hex tiles in `HexMap.kt`, dice display, resource readout, modal dialogs) is deferred to a post-launch polish pass.
+- **Test infrastructure**: `org.json:json:20240303` added as `testImplementation` so JVM unit tests can exercise the JSONObject path. Five new tests in `GameStatePersistenceTest` cover round-trip for fresh and mid-game states, invalid JSON, schema-version rejection, and parseable output.
+- **Verification**: `:app:testDebugUnitTest` BUILD SUCCESSFUL (existing `AutoPlaytest` + `FunFactorPlaytest` still pass + 5 new persistence tests pass); `:app:minifyReleaseWithR8` BUILD SUCCESSFUL.
+
+### Items deferred to human follow-up
+- **Key rotation** (security-critical): the keystore is removed from `HEAD` but remains in historical commits. Run `git filter-repo --path keystore --invert-paths`, force-push, and reset the Play Console upload key. See `SECURITY.md`.
+- **P0-6 IARC questionnaire**: requires a human to complete the in-console form.
+- **P0-7 Data Safety form**: requires human declaration in Play Console.
+- **P1-7 Crashlytics**: integration decision deferred; recommended before public launch.
+- **P1-4 Vector drawables**: PNG → SVG conversion deferred to post-launch.
+- **P1-10 Edge-to-edge migration** (API 35): `Window.statusBarColor` / `navigationBarColor` deprecation cleanup.
+- **Play Console listing assets**: icon densities, feature graphic, screenshots, description copy.
+- **Full a11y audit on emulator**: TalkBack walkthrough, large-font scaling, color-only-info checks.
+- **Open balance items**: First Explorer 99% attainment (still too common); Nightmare snowball index 1.61. Re-run `FunFactorPlaytest` after the Ability button surfaces abilities — the 21/100 ability-usage stat should improve materially.
+
+### Build status as of last commit
+| Task | Result |
+|---|---|
+| `:app:testDebugUnitTest` | BUILD SUCCESSFUL |
+| `:app:minifyReleaseWithR8` | BUILD SUCCESSFUL |
+| `:app:assembleRelease` | minify path passes; packaging requires `KEYSTORE_PASSWORD` env var |
+
   Action types used:  Easy 3.2  Normal 2.6  Hard 2.6  Nightmare 2.2 (of 5 available)
   Trade usage:        Easy 2.6  Normal 0.4  Hard 0.2  Nightmare 0.2 trades/game
   Achievements:       First Explorer 99%, Master Builder 92%, Deep Delver 81%,
@@ -393,3 +441,4 @@ The repository already contains `improvement_report.md`, `IMPROVEMENT_IDEAS.md`,
 - Build under test: `app-debug.apk` v1.0.1 (versionCode 2)
 - Empirical data: `AutoPlaytest` (100 games × 4 profiles), `FunFactorPlaytest`, emulator smoke test
 - No code changes made for this report
+

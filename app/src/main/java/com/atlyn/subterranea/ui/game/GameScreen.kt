@@ -848,7 +848,8 @@ fun ActionButtons(
                 text = "Roll",
                 enabled = shouldRoll,
                 onClick = onRollDice,
-                pulse = shouldRoll
+                pulse = shouldRoll,
+                contentDescription = "Roll dice to start your turn"
             )
             
             // Explore button (New)
@@ -859,7 +860,8 @@ fun ActionButtons(
                     enabled = true,
                     onClick = onExploreClick,
                     pulse = true,
-                    color = Color(0xFF4CAF50)
+                    color = Color(0xFF4CAF50),
+                    contentDescription = "Explore selected hex tile"
                 )
             }
 
@@ -875,7 +877,8 @@ fun ActionButtons(
                 text = buildText,
                 enabled = canBuild,
                 onClick = onBuildClick,
-                color = buildColor
+                color = buildColor,
+                contentDescription = "Build a structure on the selected tile"
             )
             
             // Clear rubble button
@@ -885,7 +888,8 @@ fun ActionButtons(
             ActionButton(
                 text = "Clear",
                 enabled = canClear,
-                onClick = onClearRubble
+                onClick = onClearRubble,
+                contentDescription = "Clear rubble from selected tile, costs one iron ore and one basalt"
             )
             
             // Trade button (4:1 resource exchange)
@@ -893,7 +897,8 @@ fun ActionButtons(
                 text = "Trade",
                 enabled = canTrade && uiState.turnPhase == TurnPhase.MAIN_ACTION,
                 onClick = onTradeClick,
-                color = Color(0xFF9C27B0)
+                color = Color(0xFF9C27B0),
+                contentDescription = "Open trade menu to exchange resources"
             )
 
             // Ability button (only shown when at least one ability is usable)
@@ -902,7 +907,8 @@ fun ActionButtons(
                     text = if (usableAbilities.size > 1) "Ability·${usableAbilities.size}" else "Ability",
                     enabled = uiState.actionsThisTurn < uiState.maxActionsPerTurn,
                     onClick = onAbilityClick,
-                    color = Color(0xFFFFC107)
+                    color = Color(0xFFFFC107),
+                    contentDescription = "Use a structure ability, ${usableAbilities.size} available"
                 )
             }
 
@@ -911,7 +917,8 @@ fun ActionButtons(
                 text = "End",
                 enabled = uiState.turnPhase != TurnPhase.ROLL_DICE,
                 onClick = onEndTurn,
-                color = Color(0xFFFF9800)
+                color = Color(0xFFFF9800),
+                contentDescription = "End your turn"
             )
         }
     }
@@ -923,7 +930,8 @@ fun ActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
     color: Color = Color(0xFF00ACC1),
-    pulse: Boolean = false
+    pulse: Boolean = false,
+    contentDescription: String? = null
 ) {
     // Press animation state
     var isPressed by remember { mutableStateOf(false) }
@@ -942,6 +950,9 @@ fun ActionButton(
         label = "buttonScale"
     )
     
+    val description = contentDescription ?: text
+    val stateSuffix = if (enabled) "" else ", disabled"
+
     Box(
         modifier = Modifier
             .height(42.dp)
@@ -977,7 +988,10 @@ fun ActionButton(
                 isPressed = true
                 onClick()
             }
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 10.dp)
+            .semantics {
+                this.contentDescription = description + stateSuffix
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
