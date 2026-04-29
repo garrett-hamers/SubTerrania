@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import com.atlyn.subterranea.domain.logic.BoardGenerator
 import com.atlyn.subterranea.domain.logic.GameEngine
 import com.atlyn.subterranea.domain.model.*
+import com.atlyn.subterranea.domain.persistence.GameStatePersistence
 import com.atlyn.subterranea.domain.telemetry.GameTelemetry
 import com.atlyn.subterranea.ui.audio.GameSound
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,8 @@ import kotlinx.coroutines.flow.update
 
 private const val TAG = "GameVM"
 private const val PREFS_NAME = "subterranea_meta"
+private const val ACTIVE_GAME_PREFS = "subterranea_active_game"
+private const val ACTIVE_GAME_KEY = "state_json"
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(GameState())
@@ -54,6 +57,11 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     // Meta-progression (persisted across games)
     private val _metaProgression = MutableStateFlow(loadMetaProgression())
     val metaProgression: StateFlow<MetaProgression> = _metaProgression.asStateFlow()
+    
+    // Whether a saved active game exists from a prior session (process death recovery).
+    // Surfaced to the difficulty-selection UI as a "Resume" affordance.
+    private val _hasSavedGame = MutableStateFlow(activeGameExists())
+    val hasSavedGame: StateFlow<Boolean> = _hasSavedGame.asStateFlow()
     
     // Fast mode toggle
     private val _fastModeEnabled = MutableStateFlow(false)
@@ -209,9 +217,52 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 "mapPreset" to _selectedMapPreset.value.name
             )
         )
+        // Starting fresh - drop any prior saved game and emit initial save.
+        clearActiveGame()
         _currentDifficulty.value = difficulty
         initializeGame(difficulty)
         _showDifficultyMenu.value = false
+        saveActiveGame()
+        playSound(GameSound.BUTTON_TAP)
+    }
+
+    /**
+     * Resume a previously-saved active game (recovered from process death or
+     * user backgrounding). Returns true if a save was successfully restored.
+     */
+    fun resumeSavedGame(): Boolean {
+        val restored = loadActiveGame() ?: return false
+        _uiState.value = restored
+        _currentDifficulty.value = restored.difficulty
+        _selectedCharacter.value = restored.selectedCharacter
+        _selectedMapPreset.value = restored.mapPreset
+        _gameUIState.value = GameUIState(
+            showTutorial = restored.difficulty.showTutorial,
+            fastModeEnabled = _fastModeEnabled.value
+        )
+        _showDifficultyMenu.value = false
+        _showCharacterMenu.value = false
+        _showMapPresetMenu.value = false
+        _showTradeMenu.value = false
+        playSound(GameSound.BUTTON_TAP)
+        GameTelemetry.logState(
+            event = "game_resume",
+            state = restored,
+            outcome = GameTelemetry.Outcome.SUCCESS,
+            details = mapOf(
+                "difficulty" to restored.difficulty.name,
+                "turnNumber" to restored.turnNumber
+            )
+        )
+        return true
+    }
+
+    /**
+     * Discard any saved active game. Called when the user explicitly chooses to
+     * start fresh from the difficulty screen.
+     */
+    fun discardSavedGame() {
+        clearActiveGame()
         playSound(GameSound.BUTTON_TAP)
     }
 
@@ -284,6 +335,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         // Fully reset all state to prevent UI overlay issues
+        clearActiveGame()
         _showDifficultyMenu.value = true
         _showCharacterMenu.value = false
         _showMapPresetMenu.value = false
@@ -796,6 +848,10 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 recordGameEnd(false)
             }
+            clearActiveGame()
+        } else {
+            // Persist the post-turn state for process-death recovery.
+            saveActiveGame()
         }
     }
     
@@ -901,5 +957,53 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             .putInt("totalVPEarned", meta.totalVPEarned)
             .putBoolean("fastMode", meta.fastModeEnabled)
             .apply()
+    }
+
+    // ---------- Active-game persistence (process death recovery) ----------
+
+    private fun activeGamePrefs() = getApplication<Application>()
+        .getSharedPreferences(ACTIVE_GAME_PREFS, Context.MODE_PRIVATE)
+
+    private fun activeGameExists(): Boolean {
+        val raw = activeGamePrefs().getString(ACTIVE_GAME_KEY, null) ?: return false
+        // Validate the payload deserializes; treat corrupted saves as absent.
+        return GameStatePersistence.deserialize(raw) != null
+    }
+
+    /**
+     * Persist the current [GameState] for resume-on-process-death.
+     * Skips no-op states (game over or empty initial state).
+     */
+    fun saveActiveGame() {
+        val state = _uiState.value
+        if (state.gameOver) return
+        if (state.board.isEmpty() && state.eventLog.isEmpty()) return
+        try {
+            val json = GameStatePersistence.serialize(state)
+            activeGamePrefs().edit().putString(ACTIVE_GAME_KEY, json).apply()
+            _hasSavedGame.value = true
+        } catch (t: Throwable) {
+            Log.w(TAG, "Failed to save active game", t)
+        }
+    }
+
+    private fun loadActiveGame(): GameState? {
+        val raw = activeGamePrefs().getString(ACTIVE_GAME_KEY, null) ?: return null
+        return GameStatePersistence.deserialize(raw)
+    }
+
+    private fun clearActiveGame() {
+        activeGamePrefs().edit().remove(ACTIVE_GAME_KEY).apply()
+        _hasSavedGame.value = false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Final-chance save when the ViewModel is being destroyed mid-game so
+        // the user can resume after process death.
+        val state = _uiState.value
+        if (!state.gameOver && state.board.isNotEmpty()) {
+            saveActiveGame()
+        }
     }
 }

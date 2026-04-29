@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -237,6 +239,11 @@ fun GameScreen(
             if (gameUIState.selectedTile != null) viewModel.getAvailableStructures() else emptyList()
         }
 
+        val usableAbilities = remember(uiState.structures, uiState.turnPhase, uiState.actionsThisTurn) {
+            viewModel.getUsableAbilities()
+        }
+        var showAbilityMenu by remember { mutableStateOf(false) }
+
         ActionButtons(
             uiState = uiState,
             selectedTile = gameUIState.selectedTile,
@@ -256,12 +263,32 @@ fun GameScreen(
             onExploreClick = { viewModel.exploreSelectedTile() },
             onClearRubble = { viewModel.clearRubble() },
             onTradeClick = { viewModel.toggleTradeMenu() },
+            onAbilityClick = { if (usableAbilities.isNotEmpty()) showAbilityMenu = true },
             canTrade = viewModel.canTrade(),
             hasAvailableStructures = availableStructures.isNotEmpty(),
+            usableAbilities = usableAbilities,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 22.dp)
         )
+
+        if (showAbilityMenu) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable { showAbilityMenu = false }
+            )
+            AbilityMenu(
+                usableAbilities = usableAbilities,
+                onUseAbility = { structure ->
+                    viewModel.useStructureAbility(structure.location)
+                    showAbilityMenu = false
+                },
+                onDismiss = { showAbilityMenu = false },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
         
         // Build menu popup with backdrop
         if (showBuildModal) {
@@ -423,9 +450,13 @@ fun GameScreen(
         
         // Difficulty selection screen (shows at game start)
         else {
+            val hasSaved by viewModel.hasSavedGame.collectAsState()
             DifficultySelectionScreen(
                 onSelectDifficulty = { difficulty -> viewModel.startGameWithDifficulty(difficulty) },
                 metaProgression = metaProg,
+                hasSavedGame = hasSaved,
+                onResumeGame = { viewModel.resumeSavedGame() },
+                onDiscardSavedGame = { viewModel.discardSavedGame() },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -767,8 +798,10 @@ fun ActionButtons(
     onExploreClick: () -> Unit,
     onClearRubble: () -> Unit,
     onTradeClick: () -> Unit,
+    onAbilityClick: () -> Unit,
     canTrade: Boolean,
     hasAvailableStructures: Boolean,
+    usableAbilities: List<Structure>,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -862,7 +895,17 @@ fun ActionButtons(
                 onClick = onTradeClick,
                 color = Color(0xFF9C27B0)
             )
-            
+
+            // Ability button (only shown when at least one ability is usable)
+            if (usableAbilities.isNotEmpty() && uiState.turnPhase == TurnPhase.MAIN_ACTION) {
+                ActionButton(
+                    text = if (usableAbilities.size > 1) "Ability·${usableAbilities.size}" else "Ability",
+                    enabled = uiState.actionsThisTurn < uiState.maxActionsPerTurn,
+                    onClick = onAbilityClick,
+                    color = Color(0xFFFFC107)
+                )
+            }
+
             // End Turn button
             ActionButton(
                 text = "End",
@@ -1033,6 +1076,116 @@ fun BuildMenu(
                         isAvailable = isAvailable,
                         onClick = { if (isAvailable) onBuild(type) }
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AbilityMenu(
+    usableAbilities: List<Structure>,
+    onUseAbility: (Structure) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .width(340.dp)
+            .heightIn(max = 420.dp)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0x66FFC107),
+                        Color(0x33996600)
+                    )
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .semantics {
+                contentDescription = "Use a structure ability. ${usableAbilities.size} available."
+            },
+        colors = CardDefaults.cardColors(containerColor = Color(0xF01A1A2E)),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Use Ability",
+                    color = Color(0xFFFFC107),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.semantics { contentDescription = "Close ability menu" }
+                ) {
+                    Text("✕", color = Color(0xFF607D8B))
+                }
+            }
+
+            Divider(
+                color = Color(0x44FFC107),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            if (usableAbilities.isEmpty()) {
+                Text(
+                    "No abilities available right now. Build structures with active abilities (Lantern, Outpost, Excavator, Fungal Farm) and wait for cooldowns to expire.",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 12.sp
+                )
+            } else {
+                Text(
+                    "Tap an ability to use it. Uses 1 action.",
+                    color = Color(0xFFB0BEC5),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(usableAbilities) { structure ->
+                        val ability = structure.type.ability
+                        if (ability != null) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onUseAbility(structure) }
+                                    .semantics {
+                                        contentDescription = "Use ${ability.displayName} from ${structure.type.displayName}. ${ability.description}"
+                                    },
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D44))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            ability.displayName,
+                                            color = Color(0xFFFFC107),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "from ${structure.type.displayName}",
+                                            color = Color(0xFF80DEEA),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        ability.description,
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1883,6 +2036,9 @@ private fun getBuildFailureReason(player: Player, uiState: GameState?): String {
 fun DifficultySelectionScreen(
     onSelectDifficulty: (Difficulty) -> Unit,
     metaProgression: MetaProgression = MetaProgression(),
+    hasSavedGame: Boolean = false,
+    onResumeGame: () -> Unit = {},
+    onDiscardSavedGame: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Animation for screen appearance
@@ -1931,6 +2087,42 @@ fun DifficultySelectionScreen(
                 
                 Spacer(Modifier.height(8.dp))
                 
+                // Resume previous game (if a save exists)
+                if (hasSavedGame) {
+                    Button(
+                        onClick = onResumeGame,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Resume your previous game in progress" },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32)
+                        )
+                    ) {
+                        Text(
+                            "▶  Resume Game",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(
+                        onClick = onDiscardSavedGame,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Discard the saved game and start a new one"
+                        }
+                    ) {
+                        Text(
+                            "Discard saved game",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Divider(color = Color.Gray.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 Text(
                     "Select Difficulty",
                     fontSize = 18.sp,
