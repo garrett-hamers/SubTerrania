@@ -21,14 +21,14 @@ data class Player(
     
     fun addResource(resource: Resource, amount: Int): Player {
         val current = resources.toMutableMap()
-        current[resource] = (current[resource] ?: 0) + amount
+        current[resource] = ((current[resource] ?: 0) + amount).coerceAtLeast(0)
         return copy(resources = current)
     }
     
     fun removeResources(cost: Map<Resource, Int>): Player {
         val current = resources.toMutableMap()
         cost.forEach { (resource, amount) ->
-            current[resource] = (current[resource] ?: 0) - amount
+            current[resource] = ((current[resource] ?: 0) - amount).coerceAtLeast(0)
         }
         return copy(resources = current)
     }
@@ -114,7 +114,7 @@ enum class StructureType(
     ),
     EXCAVATOR(
         displayName = "Deep Excavator",
-        cost = mapOf(Resource.IRON_ORE to 3, Resource.BASALT to 2),
+        cost = mapOf(Resource.IRON_ORE to 2, Resource.BASALT to 2),
         victoryPoints = 2,
         description = "Upgraded outpost with double production",
         ability = StructureAbility.SURVEY
@@ -144,9 +144,9 @@ enum class StructureType(
             Resource.CRYSTAL to 3, 
             Resource.IRON_ORE to 3, 
             Resource.BASALT to 2,
-            Resource.MYCELIUM to 2
+            Resource.MYCELIUM to 1
         ),
-        victoryPoints = 4,
+        victoryPoints = 5,
         description = "Ultimate structure - anchor to the planet's core"
     )
 }
@@ -171,8 +171,8 @@ enum class Achievement(
     ),
     MASTER_BUILDER(
         displayName = "Master Builder",
-        description = "Build 5 structures",
-        victoryPoints = 1
+        description = "Build 5 distinct structure types",
+        victoryPoints = 2
     ),
     CRYSTAL_BARON(
         displayName = "Crystal Baron",

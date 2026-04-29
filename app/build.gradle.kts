@@ -25,9 +25,13 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore")
+            // Keystore path is configurable via KEYSTORE_PATH env var; defaults to
+            // ../keystore (which is .gitignored). The keystore file is NOT committed
+            // to the repository — see SECURITY.md for the rotation procedure.
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: "../keystore"
+            storeFile = file(keystorePath)
             storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = "key0"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "key0"
             keyPassword = System.getenv("KEY_PASSWORD") ?: ""
         }
     }
@@ -40,8 +44,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Uncomment for signed release:
-            // signingConfig = signingConfigs.getByName("release")
+            // Sign release builds when keystore is configured. The keystore file
+            // is intentionally not committed; place it at ../keystore (or set
+            // KEYSTORE_PATH) and provide KEYSTORE_PASSWORD / KEY_PASSWORD env vars.
+            // Local builds without those env vars will silently produce an unsigned
+            // release; CI will use real values.
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

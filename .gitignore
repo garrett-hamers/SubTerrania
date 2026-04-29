@@ -30,7 +30,28 @@ captures/
 *.aab
 app/release/
 
-# Signing
+# Built artifacts
+bin/
+gen/
+out/
+build/
+.gradle/
+app/build/# IDE specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.DS_Store# Local configuration
+local.properties# Log files
+*.log# Captures
+captures/# Release artifacts
+*.apk
+*.aab
+app/release/# Signing
+keystore
 keystore/
 *.keystore
 *.jks

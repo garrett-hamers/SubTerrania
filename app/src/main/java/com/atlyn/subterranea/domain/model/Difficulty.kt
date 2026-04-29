@@ -40,7 +40,7 @@ enum class Difficulty(
                 Resource.CHITIN to 2,
                 Resource.LICHEN to 2,
                 Resource.IRON_ORE to 1,
-                Resource.CRYSTAL to 1
+                Resource.CRYSTAL to 0
             )
             NORMAL -> mapOf(
                 Resource.MYCELIUM to 1,
@@ -73,8 +73,8 @@ enum class Difficulty(
      */
     val victoryPointsToWin: Int
         get() = when (this) {
-            EASY -> 12
-            NORMAL -> 14
+            EASY -> 13
+            NORMAL -> 15
             HARD -> 19
             NIGHTMARE -> 18
         }
@@ -174,8 +174,8 @@ enum class Difficulty(
         get() = when (this) {
             EASY -> 2      // 2:1 trades (encourages trading)
             NORMAL -> 3    // 3:1 trades
-            HARD -> 4      // 4:1 trades
-            NIGHTMARE -> 5 // 5:1 trades
+            HARD -> 3      // 3:1 trades — keep trading viable on Hard
+            NIGHTMARE -> 4 // 4:1 trades — punishing but not prohibitive
         }
     
     /**

@@ -48,7 +48,7 @@ object StructureEngine {
             actionsThisTurn = state.actionsThisTurn + 1
         ).addEvent("🏗️ Built ${structureType.displayName} at (${location.q}, ${location.r})")
 
-        if (newPlayer.structuresBuilt.size >= 5 && Achievement.MASTER_BUILDER !in newPlayer.achievements) {
+        if (newPlayer.structuresBuilt.map { it.type }.toSet().size >= 5 && Achievement.MASTER_BUILDER !in newPlayer.achievements) {
             newPlayer = newPlayer.copy(achievements = newPlayer.achievements + Achievement.MASTER_BUILDER)
             newState = newState.addEvent("🏆 Achievement: Master Builder!")
         }
