@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.atlyn.subterranea"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.atlyn.subterranea"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 2
         versionName = "1.0.1"
 

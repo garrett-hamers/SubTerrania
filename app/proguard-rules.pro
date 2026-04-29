@@ -17,16 +17,10 @@
     volatile <fields>;
 }
 
-# Jetpack Compose
--keep class androidx.compose.** { *; }
--keepclassmembers class androidx.compose.** { *; }
-
-# Keep Compose runtime classes
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.compose.ui.** { *; }
--keep class androidx.compose.material3.** { *; }
--keep class androidx.compose.foundation.** { *; }
--keep class androidx.compose.animation.** { *; }
+# NOTE: Compose-specific keep rules are intentionally omitted. The Compose
+# compiler plugin and the Compose libraries ship their own consumer ProGuard
+# rules via consumerProguardFiles, which are sufficient. Keeping all of
+# androidx.compose.** defeats R8 shrinking and bloats the release APK.
 
 # Keep data classes used in game state (for potential serialization)
 -keepclassmembers class com.atlyn.subterranea.domain.model.** {
@@ -40,13 +34,10 @@
     public static ** valueOf(java.lang.String);
 }
 
-# AndroidX Lifecycle
--keep class androidx.lifecycle.** { *; }
+# Lifecycle / ViewModel — only what's needed for reflection-based instantiation.
 -keepclassmembers class * implements androidx.lifecycle.LifecycleObserver {
     <init>(...);
 }
-
-# Keep ViewModels
 -keep class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
