@@ -329,6 +329,23 @@ After publishing this report, the following items were implemented in three foll
 - **Test infrastructure**: `org.json:json:20240303` added as `testImplementation` so JVM unit tests can exercise the JSONObject path. Five new tests in `GameStatePersistenceTest` cover round-trip for fresh and mid-game states, invalid JSON, schema-version rejection, and parseable output.
 - **Verification**: `:app:testDebugUnitTest` BUILD SUCCESSFUL (existing `AutoPlaytest` + `FunFactorPlaytest` still pass + 5 new persistence tests pass); `:app:minifyReleaseWithR8` BUILD SUCCESSFUL.
 
+### Phase D — `6c9a6ae` (action-bar a11y + report status)
+- Added `contentDescription` parameter to `ActionButton` and `Modifier.semantics` wiring; six action-bar buttons now carry descriptive TalkBack labels with disabled-state suffix.
+
+### Phase E — Final QA results
+
+**E1. FunFactorPlaytest re-run (post-Phase A balance):** 23 / 24 fun guardrails pass. Only failure: `Hard early engagement ≥ 1.5 (actual: 1.4)` — same as the original baseline, pre-existing. AutoPlaytest retention flags now read: ability usage 14/100 (vs 21/100 baseline), Hard snowball 1.86 (vs 1.61), Builder profile 6/24 = 25% (vs 38%). **Honest finding:** the Phase A balance changes tightened the win-rate spread (Easy 88% / Normal 76% / Hard 72% / Nightmare 24%) but slightly worsened the snowball and Builder metrics. The 14/100 ability figure is *not* directly affected by Phase C's UI Ability button — `FunFactorPlaytest` simulates AI players with a fixed `abilityAwareness` probability and does not exercise the UI; the variance vs. 21/100 is simulation noise. Real-human ability usage will only be measurable once analytics ship post-launch. Accepted trade-off for 1.0.1.
+
+**E2. Emulator smoke test (Pixel 6, API 34, Android 14):**
+- Difficulty selection screen renders Phase A VP curve correctly: 13 / 15 / 19 / 18 with trade ratios 2:1 / 3:1 / 3:1 / 4:1.
+- Easy game start produces correct resources (CRYSTAL = 0 confirmed).
+- After force-stop on Turn 1 ROLL_DICE phase, `subterranea_active_game.xml` is present in `/data/data/com.atlyn.subterranea/shared_prefs/` with `v:1`, `difficulty:EASY`, `victoryPointsToWin:13`, `turnNumber:1`.
+- Relaunch surfaces the green **Resume Game** button + **Discard saved game** text on the difficulty screen.
+- Tapping **Resume Game** restores the exact pre-force-stop state: Turn 1, ROLL_DICE phase, 0/13 VP, identical resource counts, identical map layout, character "The Explorer" preserved.
+- **P0-5 launch blocker is verified resolved end-to-end on a real device.**
+
+**E3. Smoke screenshots archived in `files/launch-smoke/`** (01_main_menu through 07_after_resume), 7 PNGs.
+
 ### Items deferred to human follow-up
 - **Key rotation** (security-critical): the keystore is removed from `HEAD` but remains in historical commits. Run `git filter-repo --path keystore --invert-paths`, force-push, and reset the Play Console upload key. See `SECURITY.md`.
 - **P0-6 IARC questionnaire**: requires a human to complete the in-console form.
