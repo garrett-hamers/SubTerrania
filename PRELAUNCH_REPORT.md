@@ -357,6 +357,12 @@ After publishing this report, the following items were implemented in three foll
 - **Full a11y audit on emulator**: TalkBack walkthrough, large-font scaling, color-only-info checks.
 - **Open balance items**: First Explorer 99% attainment (still too common); Nightmare snowball index 1.61. Re-run `FunFactorPlaytest` after the Ability button surfaces abilities — the 21/100 ability-usage stat should improve materially.
 
+### Phase G — Security rewrite + signed build (post-Phase E)
+- **Keystore history rewrite**: `git filter-repo --invert-paths --path keystore` purged the leaked keystore from all 40 commits. All commit SHAs renumbered. `.git` backed up at `Q:\Repos\SubTerrania-git-backup-pre-filter` before the rewrite. Force-pushed to `origin/master` (`e679101...ccfd800 master -> master (forced update)`).
+- **Note on GitHub-side residue**: GitHub keeps unreachable objects via internal reflog and PR refs for ~90 days. The leaked secret may briefly remain accessible via direct SHA URLs. To expedite full purge, file a request with GitHub Support ("purge stale references on this repository").
+- **Fresh keystore generated**: PKCS12, RSA-4096, 30-year validity, alias `subterranea`. Strong random 24-character passwords (entropy ≈ 144 bits). The leaked keystore was moved aside as `keystore.leaked.bak` (untracked) for the user to delete after verifying the new one. Cert SHA-256 fingerprint: `39:41:91:7C:58:77:9B:CC:85:9B:F8:08:DA:90:52:93:76:D1:6C:0F:F3:DC:06:EA:6A:0B:4E:15:6A:78:9D:DE`.
+- **Signed release AAB built**: `app/build/outputs/bundle/release/app-release.aab` (17.5 MB, SHA-256 `1CD29E0D40CA0510714A9BAB0935479D2BB0D31AA11B4086595AF460CCBFD0B7`). `jarsigner -verify` returns "jar verified" — the PKIX warning about an unverifiable certificate chain is expected for self-signed upload keys and is accepted by Play Console.
+
 ### Build status as of last commit
 | Task | Result |
 |---|---|
