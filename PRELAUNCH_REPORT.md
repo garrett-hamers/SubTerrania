@@ -346,22 +346,41 @@ After publishing this report, the following items were implemented in three foll
 
 **E3. Smoke screenshots archived in `files/launch-smoke/`** (01_main_menu through 07_after_resume), 7 PNGs.
 
+### Phase G — Security rewrite + signed build (post-Phase E)
+- **Keystore history rewrite**: `git filter-repo --invert-paths --path keystore` purged the leaked keystore from all 40 commits. All commit SHAs renumbered. `.git` backed up at `Q:\Repos\SubTerrania-git-backup-pre-filter` before the rewrite. Force-pushed to `origin/master` (`e679101...ccfd800 master -> master (forced update)`).
+- **Note on GitHub-side residue**: GitHub keeps unreachable objects via internal reflog and PR refs for ~90 days. The leaked secret may briefly remain accessible via direct SHA URLs. To expedite full purge, file a request with GitHub Support ("purge stale references on this repository").
+- **Fresh keystore generated**: PKCS12, RSA-4096, 30-year validity, alias `subterranea`. Strong random 24-character passwords (entropy ≈ 144 bits). The leaked keystore was moved aside as `keystore.leaked.bak` (untracked) for the user to delete after verifying the new one. Cert SHA-256 fingerprint: `39:41:91:7C:58:77:9B:CC:85:9B:F8:08:DA:90:52:93:76:D1:6C:0F:F3:DC:06:EA:6A:0B:4E:15:6A:78:9D:DE`.
+- **Signed release AAB built**: `app/build/outputs/bundle/release/app-release.aab` (17.5 MB). `jarsigner -verify` returns "jar verified" — the PKIX warning about an unverifiable certificate chain is expected for self-signed upload keys and is accepted by Play Console.
+
+### Phase H — Play Console listing assets prep (post-Phase G)
+- **Brand consolidation**: the app had three different spellings — `Subterranea` (label), `SubTerranea` (privacy policy + spec), and `SubTerrania` (in-game splash + icon text). Standardised on **`SubTerrania`** (the form already baked into the icon and rendered on the difficulty screen). `app_name` in `strings.xml` updated; `docs/privacy-policy.html` and `docs/index.html` updated. Internal code identifiers (`com.atlyn.subterranea` applicationId, `Theme.Subterranea`, `SubterraneaTheme` composable) deliberately left alone — they are not user-facing and changing the applicationId would break upgrade paths post-launch.
+- **Signed release AAB rebuilt** after the `app_name` change: `app/build/outputs/bundle/release/app-release.aab` (17.49 MB, SHA-256 `D56D13EA96A46D14CB07DB912DADA87E4C934D3CE35D87BB72C08FDE7709C4E4`). This is the AAB to upload — the previous SHA-256 `1CD29E0DC...` is superseded.
+- **GitHub Pages config staged** — `docs/_config.yml`, `docs/index.html`, and `docs/.nojekyll` added so that, once Pages is enabled in Settings → Pages → Source `master /docs`, the privacy policy is publicly hosted at `https://garrett-hamers.github.io/SubTerrania/privacy-policy.html`. Privacy policy minor copy fixes shipped in the same commit (typo `Atyln Support` → `Atlyn`, stale date refresh).
+- **Listing assets generated** under `store-assets/` (committed to repo for traceability):
+  - `icon-512.png` — Play Store hi-res icon, downscaled from `mipmap-xxxhdpi/ic_launcher.png` with HighQualityBicubic interpolation.
+  - `feature-graphic-1024x500.png` — 1024×500 banner, gradient + hex-grid motif + icon + title.
+  - `screenshots/01..04.png` — 1080×2160 (exact 1:2 ratio, Play Store-compliant) cropped from the Phase E device smoke test.
+  - `listing.md` — title, short description, full description (~2,830 chars), category, IARC + Data Safety cheat sheets, contact info, and a per-step Play Console checklist.
+
+### Items deferred to the user (Play Console UI only)
+- IARC questionnaire (cheat sheet in `store-assets/listing.md`).
+- Data Safety form (cheat sheet in `store-assets/listing.md`; everything answers "no").
+- Enable GitHub Pages (Settings → Pages → branch=master, folder=/docs).
+- Upload assets + listing copy + AAB to Internal Testing track.
+- Address pre-launch report findings; promote Internal → Closed → Production.
+- Move keystore credentials from `files/NEW_KEYSTORE_CREDENTIALS.txt` to a password manager and delete the file.
+- Back up `keystore` to encrypted off-machine storage.
+- Delete `keystore.leaked.bak`.
+- File a GitHub Support ticket to purge stale repo references.
+
 ### Items deferred to human follow-up
-- **Key rotation** (security-critical): the keystore is removed from `HEAD` but remains in historical commits. Run `git filter-repo --path keystore --invert-paths`, force-push, and reset the Play Console upload key. See `SECURITY.md`.
 - **P0-6 IARC questionnaire**: requires a human to complete the in-console form.
 - **P0-7 Data Safety form**: requires human declaration in Play Console.
 - **P1-7 Crashlytics**: integration decision deferred; recommended before public launch.
 - **P1-4 Vector drawables**: PNG → SVG conversion deferred to post-launch.
 - **P1-10 Edge-to-edge migration** (API 35): `Window.statusBarColor` / `navigationBarColor` deprecation cleanup.
-- **Play Console listing assets**: icon densities, feature graphic, screenshots, description copy.
 - **Full a11y audit on emulator**: TalkBack walkthrough, large-font scaling, color-only-info checks.
 - **Open balance items**: First Explorer 99% attainment (still too common); Nightmare snowball index 1.61. Re-run `FunFactorPlaytest` after the Ability button surfaces abilities — the 21/100 ability-usage stat should improve materially.
-
-### Phase G — Security rewrite + signed build (post-Phase E)
-- **Keystore history rewrite**: `git filter-repo --invert-paths --path keystore` purged the leaked keystore from all 40 commits. All commit SHAs renumbered. `.git` backed up at `Q:\Repos\SubTerrania-git-backup-pre-filter` before the rewrite. Force-pushed to `origin/master` (`e679101...ccfd800 master -> master (forced update)`).
-- **Note on GitHub-side residue**: GitHub keeps unreachable objects via internal reflog and PR refs for ~90 days. The leaked secret may briefly remain accessible via direct SHA URLs. To expedite full purge, file a request with GitHub Support ("purge stale references on this repository").
-- **Fresh keystore generated**: PKCS12, RSA-4096, 30-year validity, alias `subterranea`. Strong random 24-character passwords (entropy ≈ 144 bits). The leaked keystore was moved aside as `keystore.leaked.bak` (untracked) for the user to delete after verifying the new one. Cert SHA-256 fingerprint: `39:41:91:7C:58:77:9B:CC:85:9B:F8:08:DA:90:52:93:76:D1:6C:0F:F3:DC:06:EA:6A:0B:4E:15:6A:78:9D:DE`.
-- **Signed release AAB built**: `app/build/outputs/bundle/release/app-release.aab` (17.5 MB, SHA-256 `1CD29E0D40CA0510714A9BAB0935479D2BB0D31AA11B4086595AF460CCBFD0B7`). `jarsigner -verify` returns "jar verified" — the PKIX warning about an unverifiable certificate chain is expected for self-signed upload keys and is accepted by Play Console.
 
 ### Build status as of last commit
 | Task | Result |

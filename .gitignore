@@ -52,6 +52,7 @@ captures/# Release artifacts
 *.aab
 app/release/# Signing
 keystore
+keystore.*
 keystore/
 *.keystore
 *.jks

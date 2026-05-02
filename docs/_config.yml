@@ -1,0 +1,10 @@
+title: SubTerrania
+description: Privacy policy and project pages for SubTerrania, a single-player offline turn-based strategy game.
+theme: null
+plugins: []
+
+include:
+  - privacy-policy.html
+
+exclude:
+  - "*.md"
