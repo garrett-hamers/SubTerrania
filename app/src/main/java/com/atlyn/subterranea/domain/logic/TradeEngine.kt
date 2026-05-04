@@ -2,10 +2,18 @@ package com.atlyn.subterranea.domain.logic
 
 import com.atlyn.subterranea.domain.model.GameState
 import com.atlyn.subterranea.domain.model.Resource
+import com.atlyn.subterranea.domain.model.TurnPhase
 
 object TradeEngine {
 
     fun tradeResources(state: GameState, give: Resource, receive: Resource): GameState {
+        if (state.turnPhase != TurnPhase.MAIN_ACTION) {
+            return state.addEvent("❌ Trades only allowed during the main action phase")
+        }
+        if (state.actionsThisTurn >= state.maxActionsPerTurn) {
+            return state.addEvent("❌ No actions remaining — end turn or use existing actions")
+        }
+
         if (give == receive) {
             return state.addEvent("❌ Cannot trade same resource!")
         }
@@ -22,7 +30,9 @@ object TradeEngine {
             .addResource(give, -tradeRatio)
             .addResource(receive, 1)
 
-        var newState = state.updatePlayer(newPlayer)
+        var newState = state
+            .copy(actionsThisTurn = state.actionsThisTurn + 1)
+            .updatePlayer(newPlayer)
             .addEvent("🔄 Traded $tradeRatio ${give.displayName()} for 1 ${receive.displayName()}")
 
         if (useDiscount) {
@@ -34,6 +44,8 @@ object TradeEngine {
     }
 
     fun canTrade(state: GameState): Boolean {
+        if (state.turnPhase != TurnPhase.MAIN_ACTION) return false
+        if (state.actionsThisTurn >= state.maxActionsPerTurn) return false
         val tradeRatio = if (state.discountTradeAvailable) 2 else state.difficulty.tradeRatio
         return state.currentPlayer.resources.any { (_, count) -> count >= tradeRatio }
     }

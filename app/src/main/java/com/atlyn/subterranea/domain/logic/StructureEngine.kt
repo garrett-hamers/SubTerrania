@@ -28,6 +28,10 @@ object StructureEngine {
             }
         }
 
+        if (structureType == StructureType.LANTERN && !lanternHasUtility(state, location)) {
+            return state.addEvent("❌ Lantern would light no new area. Place near unlit or unrevealed tiles.")
+        }
+
         val adjustedCost = getAdjustedBuildCost(structureType, state.difficulty, state.selectedCharacter)
         if (!player.canAfford(adjustedCost)) {
             return state.addEvent("❌ Cannot afford ${structureType.displayName}")
@@ -102,6 +106,7 @@ object StructureEngine {
                     val canBuild = when {
                         type == StructureType.EXCAVATOR -> existing?.type == StructureType.OUTPOST
                         existing != null -> false
+                        type == StructureType.LANTERN -> lanternHasUtility(state, tile.coordinate)
                         else -> true
                     }
 
@@ -153,6 +158,14 @@ object StructureEngine {
 
         val ability = structure.type.ability
             ?: return state.addEvent("❌ This structure has no active ability")
+
+        if (state.turnPhase != TurnPhase.MAIN_ACTION) {
+            return state.addEvent("❌ Abilities only usable during the main action phase")
+        }
+
+        if (state.actionsThisTurn >= state.maxActionsPerTurn) {
+            return state.addEvent("❌ No actions remaining — end turn or save the ability for later")
+        }
 
         if (structure.abilityCooldown > 0) {
             return state.addEvent("❌ Ability on cooldown (${structure.abilityCooldown} turns)")
@@ -217,7 +230,10 @@ object StructureEngine {
             } else existing
         }
 
-        return newState.copy(structures = updatedStructures).updatePlayer(player)
+        return newState.copy(
+            structures = updatedStructures,
+            actionsThisTurn = newState.actionsThisTurn + 1
+        ).updatePlayer(player)
     }
 
     fun tickStructureCooldowns(state: GameState): GameState {
@@ -254,13 +270,32 @@ object StructureEngine {
             } else structure
         }
 
+        val message = when {
+            tilesLit > 0 -> "💡 Area illuminated! ($tilesLit ${if (tilesLit == 1) "tile" else "tiles"})"
+            else -> "💡 Lantern placed near unexplored area — future tiles will auto-light."
+        }
+
         var newState = state.copy(board = newBoard, structures = updatedStructures)
-            .addEvent("💡 Area illuminated! ($tilesLit ${if (tilesLit == 1) "tile" else "tiles"})")
+            .addEvent(message)
 
         if (tilesLit >= GameConstants.LANTERN_BONUS_THRESHOLD) {
             newState = newState.addEvent("🏆 Well-placed Lantern! +1 VP")
         }
 
         return newState
+    }
+
+    /**
+     * A Lantern Post has utility iff at least one of (self, neighbours) is either
+     * unrevealed (so it will auto-illuminate when later explored — see
+     * ExplorationEngine.checkIlluminationFromLanterns) OR revealed-but-unilluminated
+     * (so it will be lit immediately by illuminateAdjacentTiles).
+     */
+    fun lanternHasUtility(state: GameState, location: HexCoordinate): Boolean {
+        val candidates = listOf(location) + location.neighbors()
+        return candidates.any { coord ->
+            val tile = state.board[coord]
+            tile != null && (!tile.isRevealed || !tile.isIlluminated)
+        }
     }
 }

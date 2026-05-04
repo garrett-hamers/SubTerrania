@@ -1,5 +1,6 @@
 package com.atlyn.subterranea.ui.game
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -273,6 +274,7 @@ fun GameScreen(
         )
 
         if (showAbilityMenu) {
+            BackHandler(enabled = true) { showAbilityMenu = false }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -292,12 +294,13 @@ fun GameScreen(
         
         // Build menu popup with backdrop
         if (showBuildModal) {
+            BackHandler(enabled = true) { viewModel.closeBuildMenu() }
             // Dark backdrop that dismisses on tap
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable { viewModel.toggleBuildMenu() }
+                    .clickable { viewModel.closeBuildMenu() }
             )
             
             BuildMenu(
@@ -307,18 +310,19 @@ fun GameScreen(
                     uiState.board[coord]?.terrain?.displayName()
                 },
                 onBuild = { type -> viewModel.buildStructure(type) },
-                onDismiss = { viewModel.toggleBuildMenu() },
+                onDismiss = { viewModel.closeBuildMenu() },
                 modifier = Modifier.align(Alignment.Center)
             )
         }
         
         // Trade menu popup with backdrop
         if (showTradeModal) {
+            BackHandler(enabled = true) { viewModel.closeTradeMenu() }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .clickable { viewModel.toggleTradeMenu() }
+                    .clickable { viewModel.closeTradeMenu() }
             )
             
             TradeMenu(
@@ -326,7 +330,7 @@ fun GameScreen(
                 player = uiState.currentPlayer,
                 tradeRatio = if (uiState.discountTradeAvailable) 2 else uiState.difficulty.tradeRatio,
                 onTrade = { give, receive -> viewModel.tradeResources(give, receive) },
-                onDismiss = { viewModel.toggleTradeMenu() },
+                onDismiss = { viewModel.closeTradeMenu() },
                 modifier = Modifier.align(Alignment.Center)
             )
         }
@@ -895,7 +899,8 @@ fun ActionButtons(
             // Trade button (4:1 resource exchange)
             ActionButton(
                 text = "Trade",
-                enabled = canTrade && uiState.turnPhase == TurnPhase.MAIN_ACTION,
+                enabled = canTrade && uiState.turnPhase == TurnPhase.MAIN_ACTION &&
+                    uiState.actionsThisTurn < uiState.maxActionsPerTurn,
                 onClick = onTradeClick,
                 color = Color(0xFF9C27B0),
                 contentDescription = "Open trade menu to exchange resources"

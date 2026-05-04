@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.atlyn.subterranea.domain.logic.BoardGenerator
 import com.atlyn.subterranea.domain.logic.GameEngine
+import com.atlyn.subterranea.domain.logic.StructureEngine
 import com.atlyn.subterranea.domain.model.*
 import com.atlyn.subterranea.domain.persistence.GameStatePersistence
 import com.atlyn.subterranea.domain.telemetry.GameTelemetry
@@ -751,6 +752,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         playSound(GameSound.BUTTON_TAP)
         _showTradeMenu.value = !_showTradeMenu.value
     }
+
+    fun closeTradeMenu() {
+        if (_showTradeMenu.value) {
+            playSound(GameSound.BUTTON_TAP)
+            _showTradeMenu.value = false
+        }
+    }
+
+    fun closeBuildMenu() {
+        if (_gameUIState.value.showBuildMenu) {
+            playSound(GameSound.BUTTON_TAP)
+            _gameUIState.update { it.copy(showBuildMenu = false) }
+        }
+    }
     
     fun tradeResources(give: Resource, receive: Resource) {
         val before = _uiState.value
@@ -912,6 +927,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             val canPlace = when {
                 type == StructureType.EXCAVATOR -> existingStructure?.type == StructureType.OUTPOST
                 existingStructure != null -> false
+                type == StructureType.LANTERN -> StructureEngine.lanternHasUtility(state, location)
                 else -> true
             }
             Log.d(TAG, "  $type: canAfford=$canAfford, canPlace=$canPlace")

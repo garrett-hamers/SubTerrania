@@ -160,13 +160,15 @@ class RealStrategicPlaytest {
                 !state.gameOver && safety < 30
             ) {
                 safety++
-                // Free ability uses first
-                val usable = GameEngine.getUsableAbilities(state)
-                if (usable.isNotEmpty() && shouldUseAbility(state, usable.first())) {
-                    state = GameEngine.useStructureAbility(state, usable.first().location)
-                    abilitiesUsed++
-                    continue
-                }
+            // Abilities now cost 1 action each (post-Phase L fix).
+            // Only use ability when (a) we have spare actions OR (b) ability is materially valuable
+            // (resource gain) and we can't afford a meaningful build.
+            val usable = GameEngine.getUsableAbilities(state)
+            if (usable.isNotEmpty() && shouldUseAbility(state, usable.first())) {
+                state = GameEngine.useStructureAbility(state, usable.first().location)
+                abilitiesUsed++
+                continue
+            }
 
                 val before = state
                 val actions = GameEngine.getAvailableActions(state).filter { it !is GameAction.RollDice }
@@ -451,14 +453,21 @@ class RealStrategicPlaytest {
     }
 
     private fun shouldUseAbility(state: GameState, structure: Structure): Boolean {
-        // Always use Spore Burst (free 2 mycelium). Always use Survey/Flare (info).
-        // Use Overtime when we need a specific resource we lack.
+        // Abilities now cost 1 action (post Phase L). Only fire if we have spare action budget,
+        // or if the ability gives a tangible resource and we cannot afford anything meaningful.
+        val actionsRemainingAfterUse = state.maxActionsPerTurn - state.actionsThisTurn - 1
+        val hasSpare = actionsRemainingAfterUse >= 1
         return when (structure.type.ability) {
-            StructureAbility.SPORE_BURST, StructureAbility.SURVEY, StructureAbility.FLARE -> true
+            StructureAbility.SPORE_BURST -> {
+                // +2 Mycelium is material. Use if spare action OR we lack mycelium
+                hasSpare || state.currentPlayer.getResourceCount(Resource.MYCELIUM) < 2
+            }
             StructureAbility.OVERTIME -> {
                 val player = state.currentPlayer
-                Resource.entries.any { player.getResourceCount(it) < 2 }
+                hasSpare && Resource.entries.any { player.getResourceCount(it) < 2 }
             }
+            // Info-only abilities — only use when we have spare budget (can't beat a build/explore for the last action)
+            StructureAbility.SURVEY, StructureAbility.FLARE -> hasSpare
             null -> false
         }
     }
