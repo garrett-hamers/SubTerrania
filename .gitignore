@@ -57,3 +57,11 @@ keystore/
 *.keystore
 *.jks
 signing.properties
+
+# Play Console service account
+tools/play-service-account.json
+tools/*-service-account.json
+
+# Python
+__pycache__/
+*.pyc
