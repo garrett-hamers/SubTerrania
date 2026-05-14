@@ -530,18 +530,18 @@ private fun DrawScope.drawTileContent(
         
         drawCircle(
             color = numberColor,
-            radius = hexSize * 0.25f,
+            radius = hexSize * 0.32f,
             center = Offset(center.x, center.y + hexSize * 0.45f)
         )
         
         val displayText = if (secondary != null) "$number|$secondary" else number.toString()
-        val fontSize = if (secondary != null) hexSize * 0.22f else hexSize * 0.3f
+        val fontSize = if (secondary != null) hexSize * 0.28f else hexSize * 0.36f
         
         numberTextPaint.textSize = fontSize
         drawContext.canvas.nativeCanvas.drawText(
             displayText,
             center.x,
-            center.y + hexSize * 0.53f,
+            center.y + hexSize * 0.54f,
             numberTextPaint
         )
     }

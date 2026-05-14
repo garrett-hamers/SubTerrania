@@ -3,8 +3,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!--
+      Phase O-3: required for posting Application Insights envelopes to Azure
+      Monitor. Used only for outbound telemetry; we never accept inbound
+      connections. ACCESS_NETWORK_STATE is intentionally NOT requested — we
+      treat any network failure (including offline) as silent drop.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".SubterraneaApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"

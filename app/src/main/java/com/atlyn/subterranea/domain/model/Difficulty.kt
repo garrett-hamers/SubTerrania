@@ -43,10 +43,14 @@ enum class Difficulty(
                 Resource.CRYSTAL to 0
             )
             NORMAL -> mapOf(
-                Resource.MYCELIUM to 1,
-                Resource.BASALT to 1,
-                Resource.CHITIN to 1,
-                Resource.LICHEN to 1,
+                // Phase O-1: bumped base resources +1 each (was all 1) so the
+                // player has at least one affordable build on turn 1 (Outpost,
+                // Fungal Farm, or Beetle Stable). Iron / Crystal stay at 0 so
+                // a turn-1 Lantern still requires earning the materials.
+                Resource.MYCELIUM to 2,
+                Resource.BASALT to 2,
+                Resource.CHITIN to 2,
+                Resource.LICHEN to 2,
                 Resource.IRON_ORE to 0,
                 Resource.CRYSTAL to 0
             )

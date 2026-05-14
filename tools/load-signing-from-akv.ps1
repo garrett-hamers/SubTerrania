@@ -90,6 +90,17 @@ $keystorePass    = Get-AkvSecret -Name 'keystore-password'
 $keyPass         = Get-AkvSecret -Name 'key-password'
 $keyAlias        = Get-AkvSecret -Name 'key-alias'
 
+# Also pull the optional Application Insights connection string for Phase O-3
+# observability. If the secret doesn't exist (older vaults), we silently skip
+# it — release builds without telemetry are still valid.
+$appInsightsConn = $null
+try {
+    $appInsightsConn = az keyvault secret show --vault-name $VaultName --name 'appinsights-connection-string' --query value -o tsv 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $appInsightsConn) { $appInsightsConn = $null }
+} catch {
+    $appInsightsConn = $null
+}
+
 # 3. Materialize the temp keystore.
 $rand    = [guid]::NewGuid().ToString('N').Substring(0, 8)
 $tmpPath = Join-Path $env:TEMP "subterranea-$rand.keystore"
@@ -108,6 +119,9 @@ $env:KEYSTORE_PATH     = $tmpPath
 $env:KEYSTORE_PASSWORD = $keystorePass
 $env:KEY_PASSWORD      = $keyPass
 $env:KEY_ALIAS         = $keyAlias
+if ($appInsightsConn) {
+    $env:APPINSIGHTS_CONNECTION_STRING = $appInsightsConn
+}
 
 # 6. Best-effort cleanup on shell exit.
 #    Register-EngineEvent's correct signature for built-in events is to pass
@@ -129,10 +143,11 @@ function global:Unregister-SubterraneaSigning {
     if ($env:KEYSTORE_PATH -and (Test-Path $env:KEYSTORE_PATH)) {
         Remove-Item $env:KEYSTORE_PATH -Force -ErrorAction SilentlyContinue
     }
-    Remove-Item Env:\KEYSTORE_PATH      -ErrorAction SilentlyContinue
-    Remove-Item Env:\KEYSTORE_PASSWORD  -ErrorAction SilentlyContinue
-    Remove-Item Env:\KEY_PASSWORD       -ErrorAction SilentlyContinue
-    Remove-Item Env:\KEY_ALIAS          -ErrorAction SilentlyContinue
+    Remove-Item Env:\KEYSTORE_PATH                  -ErrorAction SilentlyContinue
+    Remove-Item Env:\KEYSTORE_PASSWORD              -ErrorAction SilentlyContinue
+    Remove-Item Env:\KEY_PASSWORD                   -ErrorAction SilentlyContinue
+    Remove-Item Env:\KEY_ALIAS                      -ErrorAction SilentlyContinue
+    Remove-Item Env:\APPINSIGHTS_CONNECTION_STRING  -ErrorAction SilentlyContinue
     Write-Host "Cleared SubTerrania signing material from session."
 }
 
@@ -140,4 +155,9 @@ Write-Host ""
 Write-Host "Loaded signing material from $VaultName."
 Write-Host "  KEYSTORE_PATH = $tmpPath"
 Write-Host "  KEY_ALIAS     = $keyAlias"
+if ($appInsightsConn) {
+    Write-Host "  APPINSIGHTS_CONNECTION_STRING set (length=$($appInsightsConn.Length))"
+} else {
+    Write-Host "  APPINSIGHTS_CONNECTION_STRING not present in vault (telemetry will no-op)"
+}
 Write-Host "  Temp keystore is auto-deleted on shell exit, or call Unregister-SubterraneaSigning."

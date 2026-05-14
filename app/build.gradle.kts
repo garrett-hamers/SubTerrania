@@ -14,13 +14,24 @@ android {
         applicationId = "com.atlyn.subterranea"
         minSdk = 24
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.0.5"
+        versionCode = 7
+        versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Phase O-3: Azure Application Insights connection string is read from
+        // the APPINSIGHTS_CONNECTION_STRING env var (loaded by the AKV helper)
+        // and exposed via BuildConfig so the Telemetry initialiser can read it
+        // without depending on env vars at runtime. Empty string disables
+        // telemetry — useful for unsigned local builds.
+        buildConfigField(
+            "String",
+            "APPINSIGHTS_CONNECTION_STRING",
+            "\"${System.getenv("APPINSIGHTS_CONNECTION_STRING") ?: ""}\""
+        )
     }
 
     signingConfigs {
@@ -63,6 +74,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {

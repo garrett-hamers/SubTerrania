@@ -55,6 +55,9 @@ fun GameScreen(
 
     // Event history dialog state — opened by tapping the bottom event ticker.
     var showHistoryDialog by remember { mutableStateOf(false) }
+
+    // Settings overlay state — opened by the gear icon in TopHUD.
+    var showSettingsDialog by remember { mutableStateOf(false) }
     
     // Sound manager - remember and handle lifecycle
     val soundManager = remember { SoundManager(context) }
@@ -139,6 +142,9 @@ fun GameScreen(
         if (hasHigherPriorityModal && showHistoryDialog) {
             showHistoryDialog = false
         }
+        if (hasHigherPriorityModal && showSettingsDialog) {
+            showSettingsDialog = false
+        }
     }
 
     Box(
@@ -172,6 +178,7 @@ fun GameScreen(
         // Top HUD - Turn info and VP
         TopHUD(
             uiState = uiState,
+            onSettings = { if (!hasHigherPriorityModal) showSettingsDialog = true },
             modifier = Modifier.align(Alignment.TopCenter)
         )
         
@@ -366,6 +373,20 @@ fun GameScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
+
+        // Settings overlay
+        if (showSettingsDialog) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable { showSettingsDialog = false }
+            )
+            com.atlyn.subterranea.ui.settings.SettingsMenu(
+                onDismiss = { showSettingsDialog = false },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
         
         // Exploration event popup with backdrop
         if (showExplorationModal) {
@@ -456,7 +477,10 @@ fun GameScreen(
             VictoryScreen(
                 winner = uiState.winner!!,
                 metaProgression = metaProg,
-                onRestart = { viewModel.resetGame() },
+                onReplaySeed = { viewModel.replayLastSeed() },
+                onNextDifficulty = { viewModel.replayNextDifficulty() },
+                onPickNewMap = { viewModel.resetGame() },
+                isAtMaxDifficulty = uiState.difficulty == Difficulty.NIGHTMARE,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -468,7 +492,8 @@ fun GameScreen(
                 vpTarget = uiState.victoryPointsToWin,
                 turnsPlayed = uiState.turnNumber,
                 metaProgression = metaProg,
-                onRestart = { viewModel.resetGame() },
+                onReplaySeed = { viewModel.replayLastSeed() },
+                onPickNewMap = { viewModel.resetGame() },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -484,14 +509,35 @@ fun GameScreen(
                 hasSavedGame = hasSaved,
                 onResumeGame = { viewModel.resumeSavedGame() },
                 onDiscardSavedGame = { viewModel.discardSavedGame() },
+                unlockedCharacters = viewModel.getUnlockedCharacters(),
+                selectedCharacter = viewModel.selectedCharacter.collectAsState().value,
+                onSelectCharacter = { c -> viewModel.selectCharacter(c) },
+                selectedMapPreset = viewModel.selectedMapPreset.collectAsState().value,
+                onSelectMapPreset = { m -> viewModel.selectMapPreset(m) },
                 modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Phase O-1: first-run coachmark tutorial. Only shows when the game
+        // is actually running (difficulty menu hidden), the game isn't over,
+        // no other modal is up, and the player has never completed/skipped
+        // the tutorial. Sits above the board but below other modals.
+        if (!showDifficultyMenu &&
+            !uiState.gameOver &&
+            !hasHigherPriorityModal &&
+            !showEndTurnConfirm &&
+            !showHistoryDialog &&
+            !metaProg.tutorialSeen
+        ) {
+            com.atlyn.subterranea.ui.onboarding.TutorialOverlay(
+                onComplete = { viewModel.markTutorialSeen() }
             )
         }
     }
 }
 
 @Composable
-fun TopHUD(uiState: GameState, modifier: Modifier = Modifier) {
+fun TopHUD(uiState: GameState, onSettings: () -> Unit = {}, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -562,6 +608,20 @@ fun TopHUD(uiState: GameState, modifier: Modifier = Modifier) {
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
+            Spacer(Modifier.width(8.dp))
+            // Phase O-3: settings gear. Tap opens the SettingsMenu modal,
+            // which currently exposes "Send feedback" + version info and will
+            // host audio toggles in O-2.
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onSettings)
+                    .semantics { contentDescription = "Open settings" },
+                contentAlignment = Alignment.Center
+            ) {
+                Text("⚙", color = Color(0xFFB0BEC5), fontSize = 18.sp)
+            }
         }
     }
 }
@@ -1438,42 +1498,49 @@ fun TradeOptionCard(
                     fontSize = 13.sp
                 )
             }
-            
-            Spacer(Modifier.height(8.dp))
-            
-            Text(
-                "Receive 1:",
-                color = Color.Gray,
-                fontSize = 12.sp
-            )
-            
-            // Row of receive options
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 4.dp)
+
+            Spacer(Modifier.height(6.dp))
+
+            // Phase O-1: replaced the row-locked LazyRow with a non-scrolling
+            // Row of weighted buttons. K-2 reported that the inner LazyRow
+            // could only be scrolled by swiping at its exact Y, and that
+            // Luminary Crystal was hidden off-screen on the right. With weight=1
+            // every receive option fits inside the card and is always visible.
+            // Crystal is reordered to the front so the most strategic target
+            // is the easiest to spot.
+            val orderedReceiveOptions = allResources.sortedByDescending { it == Resource.CRYSTAL }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(allResources) { receiveResource ->
+                orderedReceiveOptions.forEach { receiveResource ->
                     Button(
                         onClick = { onTrade(receiveResource) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         ),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(36.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .semantics {
+                                contentDescription =
+                                    "Trade $tradeRatio ${giveResource.displayName()} for 1 ${receiveResource.displayName()}"
+                            }
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
                             Image(
                                 painter = IconHelper.resourcePainter(receiveResource),
-                                contentDescription = receiveResource.displayName(),
-                                modifier = Modifier.size(14.dp),
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
                                 contentScale = ContentScale.Fit
                             )
                             Text(
                                 receiveResource.displayName().take(3),
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -1722,7 +1789,10 @@ fun ConsolationChoiceCard(
 fun VictoryScreen(
     winner: Player,
     metaProgression: MetaProgression,
-    onRestart: () -> Unit,
+    onReplaySeed: () -> Unit,
+    onNextDifficulty: () -> Unit,
+    onPickNewMap: () -> Unit,
+    isAtMaxDifficulty: Boolean,
     modifier: Modifier = Modifier
 ) {
     // Celebration animations
@@ -1867,11 +1937,35 @@ fun VictoryScreen(
                 Spacer(Modifier.height(12.dp))
                 
                 Button(
-                    onClick = onRestart,
+                    onClick = onReplaySeed,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                    modifier = Modifier.scale(pulseScale(1f, 1.05f, 1000))
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .scale(pulseScale(1f, 1.03f, 1000))
+                        .semantics { contentDescription = "Replay this map with the same seed" }
                 ) {
-                    Text("Play Again")
+                    Text("▶  Replay this seed", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                if (!isAtMaxDifficulty) {
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = onNextDifficulty,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Try the next difficulty" }
+                    ) {
+                        Text("⬆  Try next difficulty", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    onClick = onPickNewMap,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Pick a new character or map" }
+                ) {
+                    Text("Pick a new map", color = Color(0xFFB0BEC5))
                 }
             }
         }
@@ -1884,7 +1978,8 @@ fun DefeatScreen(
     vpTarget: Int,
     turnsPlayed: Int,
     metaProgression: MetaProgression,
-    onRestart: () -> Unit,
+    onReplaySeed: () -> Unit,
+    onPickNewMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -1960,10 +2055,22 @@ fun DefeatScreen(
                 Spacer(Modifier.height(12.dp))
 
                 Button(
-                    onClick = onRestart,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+                    onClick = onReplaySeed,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Replay this map with the same seed" }
                 ) {
-                    Text("Try Again", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("▶  Replay this seed", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
+                TextButton(
+                    onClick = onPickNewMap,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Pick a new character, difficulty, or map" }
+                ) {
+                    Text("Pick a new map", color = Color(0xFFB0BEC5))
                 }
             }
         }
@@ -2160,6 +2267,11 @@ fun DifficultySelectionScreen(
     hasSavedGame: Boolean = false,
     onResumeGame: () -> Unit = {},
     onDiscardSavedGame: () -> Unit = {},
+    unlockedCharacters: List<GameCharacter> = listOf(GameCharacter.EXPLORER),
+    selectedCharacter: GameCharacter = GameCharacter.EXPLORER,
+    onSelectCharacter: (GameCharacter) -> Unit = {},
+    selectedMapPreset: MapPreset = MapPreset.STANDARD,
+    onSelectMapPreset: (MapPreset) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Animation for screen appearance
@@ -2283,7 +2395,27 @@ fun DifficultySelectionScreen(
                 }
                 
                 Spacer(Modifier.height(20.dp))
-                
+
+                // Phase O-1: Character picker. Shows unlocked characters as
+                // tappable chips with the selected character's bonus blurb
+                // displayed below — addresses K-2's "mystery pre-built Lantern"
+                // confusion (players never knew the EXPLORER was even a choice).
+                CharacterPickerSection(
+                    characters = unlockedCharacters,
+                    selected = selectedCharacter,
+                    onSelect = onSelectCharacter
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                // Phase O-1: Map preset picker.
+                MapPresetPickerSection(
+                    selected = selectedMapPreset,
+                    onSelect = onSelectMapPreset
+                )
+
+                Spacer(Modifier.height(20.dp))
+
                 // Legend
                 Text(
                     "Higher difficulty = more hazards,\nfewer resources, harder trades",
@@ -2378,6 +2510,130 @@ private fun StatChip(text: String, color: Color) {
             .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
             .padding(horizontal = 4.dp, vertical = 2.dp)
     )
+}
+
+/**
+ * Phase O-1: horizontal row of unlocked-character chips. Tapping a chip selects
+ * that character; the selected character's bonus blurb is shown below the row
+ * so the player understands what they're choosing.
+ */
+@Composable
+private fun CharacterPickerSection(
+    characters: List<GameCharacter>,
+    selected: GameCharacter,
+    onSelect: (GameCharacter) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "Character",
+            fontSize = 14.sp,
+            color = Color(0xFFCFD8DC),
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+        ) {
+            items(characters) { character ->
+                val isSelected = character == selected
+                val borderColor = if (isSelected) Color(0xFFFFD700) else Color(0x55FFFFFF)
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) Color(0xFF263238) else Color(0xFF1A1A2E))
+                        .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+                        .clickable { onSelect(character) }
+                        .semantics {
+                            contentDescription =
+                                "${character.displayName}. ${character.description}." +
+                                if (isSelected) " Selected." else " Tap to select."
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(character.emoji, fontSize = 26.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "${selected.emoji} ${selected.displayName}",
+            fontSize = 13.sp,
+            color = Color(0xFFFFD700),
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            selected.description,
+            fontSize = 11.sp,
+            color = Color(0xFFB0BEC5),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+    }
+}
+
+/**
+ * Phase O-1: horizontal row of map-preset chips. Same pattern as
+ * [CharacterPickerSection] but for [MapPreset].
+ */
+@Composable
+private fun MapPresetPickerSection(
+    selected: MapPreset,
+    onSelect: (MapPreset) -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "Map",
+            fontSize = 14.sp,
+            color = Color(0xFFCFD8DC),
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+        ) {
+            items(MapPreset.entries.toList()) { preset ->
+                val isSelected = preset == selected
+                val borderColor = if (isSelected) Color(0xFFFFD700) else Color(0x55FFFFFF)
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) Color(0xFF263238) else Color(0xFF1A1A2E))
+                        .border(2.dp, borderColor, RoundedCornerShape(12.dp))
+                        .clickable { onSelect(preset) }
+                        .semantics {
+                            contentDescription =
+                                "${preset.displayName}. ${preset.description}." +
+                                if (isSelected) " Selected." else " Tap to select."
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(preset.emoji, fontSize = 26.sp)
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "${selected.emoji} ${selected.displayName}",
+            fontSize = 13.sp,
+            color = Color(0xFFFFD700),
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            selected.description,
+            fontSize = 11.sp,
+            color = Color(0xFFB0BEC5),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+    }
 }
 
 private fun cleanUiText(value: String): String {

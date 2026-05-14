@@ -11,7 +11,11 @@ data class MetaProgression(
     val selectedCharacter: GameCharacter = GameCharacter.EXPLORER,
     val unlockedCharacters: Set<GameCharacter> = setOf(GameCharacter.EXPLORER),
     val fastModeEnabled: Boolean = false,
-    val selectedMapPreset: MapPreset = MapPreset.STANDARD
+    val selectedMapPreset: MapPreset = MapPreset.STANDARD,
+    // Phase O-1: tracks whether the new-player coachmark tutorial has been
+    // shown. Persisted via the same SharedPreferences as the rest of
+    // meta-progression so it survives reinstalls (when Android backup is on).
+    val tutorialSeen: Boolean = false
 ) {
     /**
      * Get starting bonuses based on lifetime achievements

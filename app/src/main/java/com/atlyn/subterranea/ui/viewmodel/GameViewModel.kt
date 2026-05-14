@@ -11,6 +11,7 @@ import com.atlyn.subterranea.domain.model.*
 import com.atlyn.subterranea.domain.persistence.GameStatePersistence
 import com.atlyn.subterranea.domain.telemetry.GameTelemetry
 import com.atlyn.subterranea.ui.audio.GameSound
+import com.atlyn.subterranea.ui.observability.Telemetry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,6 +68,12 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     // Fast mode toggle
     private val _fastModeEnabled = MutableStateFlow(false)
     val fastModeEnabled: StateFlow<Boolean> = _fastModeEnabled.asStateFlow()
+
+    // Phase O-1: seed used to generate the current board, captured here so
+    // "Replay this seed" on the end-game card can reproduce the same map.
+    // Null until the first game starts; null also during DAILY_CHALLENGE
+    // (which uses a date-derived seed inside BoardGenerator).
+    private var _lastBoardSeed: Long? = null
     
     // Sound effect events - observed by UI to play sounds
     private val _soundEvent = MutableStateFlow<GameSound?>(null)
@@ -218,10 +225,50 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 "mapPreset" to _selectedMapPreset.value.name
             )
         )
+        // Phase O-3: forward to Azure Application Insights so we can see how
+        // people actually start games (no PII; see Telemetry.kt).
+        Telemetry.trackEvent("game_started", mapOf(
+            "difficulty" to difficulty.name,
+            "character" to _selectedCharacter.value.name,
+            "mapPreset" to _selectedMapPreset.value.name
+        ))
         // Starting fresh - drop any prior saved game and emit initial save.
         clearActiveGame()
         _currentDifficulty.value = difficulty
         initializeGame(difficulty)
+        _showDifficultyMenu.value = false
+        saveActiveGame()
+        playSound(GameSound.BUTTON_TAP)
+    }
+
+    /**
+     * Phase O-1: end-game CTAs.
+     * Restart with the same difficulty/character/map and the same board seed,
+     * giving the player an immediate "rematch" without going back to the
+     * difficulty selector.
+     */
+    fun replayLastSeed() {
+        val seed = _lastBoardSeed
+        clearActiveGame()
+        initializeGame(_currentDifficulty.value, seed)
+        _showDifficultyMenu.value = false
+        saveActiveGame()
+        playSound(GameSound.BUTTON_TAP)
+    }
+
+    /**
+     * Phase O-1: end-game CTAs.
+     * Replay with the next-harder difficulty (Easy → Normal → Hard → Nightmare,
+     * NIGHTMARE stays put). Same character + map, fresh seed.
+     */
+    fun replayNextDifficulty() {
+        val current = _currentDifficulty.value
+        val next = Difficulty.entries
+            .getOrNull(Difficulty.entries.indexOf(current) + 1)
+            ?: current
+        clearActiveGame()
+        _currentDifficulty.value = next
+        initializeGame(next)
         _showDifficultyMenu.value = false
         saveActiveGame()
         playSound(GameSound.BUTTON_TAP)
@@ -267,13 +314,23 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         playSound(GameSound.BUTTON_TAP)
     }
 
-    private fun initializeGame(difficulty: Difficulty = _currentDifficulty.value) {
+    private fun initializeGame(difficulty: Difficulty = _currentDifficulty.value, seed: Long? = null) {
         val character = _selectedCharacter.value
         val metaProg = _metaProgression.value
         val mapPreset = _selectedMapPreset.value
-        
+
+        // Capture the seed used so the end-game "Replay this seed" CTA can reproduce it.
+        // For DAILY_CHALLENGE the seed is derived from the date inside BoardGenerator,
+        // so we leave it null and the same date will produce the same board on replay.
+        val effectiveSeed = when {
+            mapPreset == MapPreset.DAILY_CHALLENGE -> null
+            seed != null -> seed
+            else -> System.currentTimeMillis()
+        }
+        _lastBoardSeed = effectiveSeed
+
         // Generate board based on map preset
-        val newBoard = BoardGenerator.generateBoard(mapPreset)
+        val newBoard = BoardGenerator.generateBoard(mapPreset, effectiveSeed)
         
         // Apply character bonuses to starting resources
         var startingResources = character.applyToResources(difficulty.startingResources)
@@ -356,6 +413,18 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val player = state.currentPlayer
         val vpEarned = player.calculateVictoryPoints() + player.victoryPoints
+        // Phase O-3: emit a non-PII Application Insights event so we can see
+        // win/loss distributions across difficulty + character + map.
+        Telemetry.trackEvent(
+            if (won) "game_won" else "game_lost",
+            mapOf(
+                "difficulty" to state.difficulty.name,
+                "character" to state.selectedCharacter.name,
+                "mapPreset" to state.mapPreset.name,
+                "turnNumber" to state.turnNumber.toString(),
+                "vpEarned" to vpEarned.toString()
+            )
+        )
         val resourcesBefore = state.currentPlayer.resources
         
         _metaProgression.update { current ->
@@ -960,7 +1029,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             gamesWon = prefs.getInt("gamesWon", 0),
             totalVPEarned = prefs.getInt("totalVPEarned", 0),
             unlockedCharacters = characters,
-            fastModeEnabled = prefs.getBoolean("fastMode", false)
+            fastModeEnabled = prefs.getBoolean("fastMode", false),
+            tutorialSeen = prefs.getBoolean("tutorialSeen", false)
         )
     }
     
@@ -972,7 +1042,17 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             .putInt("gamesWon", meta.gamesWon)
             .putInt("totalVPEarned", meta.totalVPEarned)
             .putBoolean("fastMode", meta.fastModeEnabled)
+            .putBoolean("tutorialSeen", meta.tutorialSeen)
             .apply()
+    }
+
+    /**
+     * Phase O-1: mark the new-player coachmark tutorial as seen so it doesn't
+     * re-appear on next launch.
+     */
+    fun markTutorialSeen() {
+        _metaProgression.update { it.copy(tutorialSeen = true) }
+        saveMetaProgression(_metaProgression.value)
     }
 
     // ---------- Active-game persistence (process death recovery) ----------

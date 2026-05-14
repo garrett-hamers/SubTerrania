@@ -12,12 +12,13 @@ object BoardGenerator {
     private val mediumNumbers = listOf(4, 5, 9, 10) // Medium probability
     private val rareNumbers = listOf(3, 4, 10, 11) // Lower probability
     
-    fun generateBoard(preset: MapPreset = MapPreset.STANDARD): Map<HexCoordinate, HexTile> {
+    fun generateBoard(preset: MapPreset = MapPreset.STANDARD, seed: Long? = null): Map<HexCoordinate, HexTile> {
         val tiles = mutableMapOf<HexCoordinate, HexTile>()
         
-        // Get random seed based on preset
-        val random = when (preset) {
-            MapPreset.DAILY_CHALLENGE -> Random(LocalDate.now().toEpochDay())
+        // Get random seed based on preset; explicit seed wins (used by O-1 "Replay this seed").
+        val random = when {
+            preset == MapPreset.DAILY_CHALLENGE -> Random(LocalDate.now().toEpochDay())
+            seed != null -> Random(seed)
             else -> Random.Default
         }
         
