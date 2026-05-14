@@ -52,6 +52,9 @@ fun GameScreen(
     
     // End turn confirmation dialog state
     var showEndTurnConfirm by remember { mutableStateOf(false) }
+
+    // Event history dialog state — opened by tapping the bottom event ticker.
+    var showHistoryDialog by remember { mutableStateOf(false) }
     
     // Sound manager - remember and handle lifecycle
     val soundManager = remember { SoundManager(context) }
@@ -133,6 +136,9 @@ fun GameScreen(
         if (hasHigherPriorityModal && showEndTurnConfirm) {
             showEndTurnConfirm = false
         }
+        if (hasHigherPriorityModal && showHistoryDialog) {
+            showHistoryDialog = false
+        }
     }
 
     Box(
@@ -160,7 +166,7 @@ fun GameScreen(
             explorableTiles = explorableTiles,
             buildableTiles = buildableTiles,
             onTileClick = { coord -> viewModel.onTileClicked(coord) },
-            modifier = Modifier.fillMaxSize().padding(top = 300.dp, bottom = 250.dp)
+            modifier = Modifier.fillMaxSize().padding(top = 300.dp, bottom = 190.dp)
         )
         
         // Top HUD - Turn info and VP
@@ -335,14 +341,31 @@ fun GameScreen(
             )
         }
         
-        // Event log (bottom strip) - always visible for context
-        EventLog(
+        // Event ticker (bottom strip) - one line, taps to open full history modal.
+        EventTicker(
             events = uiState.eventLog,
+            onClick = { if (!hasHigherPriorityModal && !showEndTurnConfirm) showHistoryDialog = true },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 100.dp, start = 10.dp, end = 10.dp)
                 .fillMaxWidth()
         )
+
+        // Full event history dialog
+        if (showHistoryDialog) {
+            BackHandler(enabled = true) { showHistoryDialog = false }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .clickable { showHistoryDialog = false }
+            )
+            EventHistoryDialog(
+                events = uiState.eventLog,
+                onDismiss = { showHistoryDialog = false },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
         
         // Exploration event popup with backdrop
         if (showExplorationModal) {
@@ -1462,27 +1485,106 @@ fun TradeOptionCard(
 }
 
 @Composable
-fun EventLog(events: List<String>, modifier: Modifier = Modifier) {
-    // Compact vertical event log at the bottom of the screen
-    Box(
+fun EventTicker(events: List<String>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    // Single-line ticker showing only the most recent event. Tap to open full history.
+    // Hidden entirely when there are no events so it doesn't reserve space.
+    val latest = events.firstOrNull() ?: return
+    val cleaned = cleanUiText(latest)
+    val tickerDescription = "Latest event: $cleaned. Tap to view full history."
+    Row(
         modifier = modifier
-            .heightIn(max = 80.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .heightIn(min = 28.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(Color(0xCC111827))
-            .border(1.dp, Color(0x5529B6F6), RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0x5529B6F6), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = tickerDescription }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        LazyColumn(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            items(events.take(3)) { event ->
+        Text(
+            cleaned,
+            color = Color.LightGray.copy(alpha = 0.95f),
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "▴",
+            color = Color(0xFF29B6F6),
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Composable
+fun EventHistoryDialog(
+    events: List<String>,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth(0.92f)
+            .widthIn(max = 420.dp)
+            .heightIn(max = 480.dp)
+            .border(1.dp, Color(0x6629B6F6), RoundedCornerShape(18.dp))
+            // Consume taps so background clicks (which dismiss) don't fire
+            // on padding/empty regions of the card itself.
+            .clickable(enabled = true, onClick = {}),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xEE111827))
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    cleanUiText(event),
-                    color = Color.LightGray.copy(alpha = 0.9f),
-                    fontSize = 11.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    "Game log",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    modifier = Modifier.weight(1f)
                 )
+                Text(
+                    "${events.size} event${if (events.size != 1) "s" else ""}",
+                    color = Color(0xFF90A4AE),
+                    fontSize = 12.sp
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            if (events.isEmpty()) {
+                Text(
+                    "No events yet.",
+                    color = Color(0xFF90A4AE),
+                    fontSize = 13.sp
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(events) { event ->
+                        Text(
+                            cleanUiText(event),
+                            color = Color.LightGray.copy(alpha = 0.95f),
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0x33000000), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .semantics { contentDescription = cleanUiText(event) }
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF29B6F6)),
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Close", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
     }

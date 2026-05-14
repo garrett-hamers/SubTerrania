@@ -4,25 +4,56 @@ import android.graphics.Paint
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
 import com.atlyn.subterranea.R
 import com.atlyn.subterranea.domain.model.*
 import com.atlyn.subterranea.ui.util.IconHelper
 import kotlin.math.sqrt
+
+// Zoom limits — extracted as top-level constants so unit tests can reference them.
+const val HEX_MAP_MIN_SCALE = 0.7f
+const val HEX_MAP_MAX_SCALE = 3.0f
 
 @Composable
 fun HexMap(
@@ -122,137 +153,310 @@ fun HexMap(
         label = "pulseWidth"
     )
 
-    Canvas(
-        modifier = modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures { offset ->
-                    // Use dynamic offsets for click detection
-                    val mapOffsetX = size.width / 2f
-                    val mapOffsetY = size.height / 2f - 50f
-                    val clickedHex = pixelToHex(offset, hexSize, mapOffsetX, mapOffsetY)
-                    onTileClick(clickedHex)
-                }
-            }
-    ) {
-        // Center the map dynamically based on canvas size
-        val mapOffsetX = size.width / 2f
-        val mapOffsetY = size.height / 2f - 50f
-        
-        // Draw all hex tiles
-        board.forEach { (coord, tile) ->
-            val center = hexToPixel(coord, hexSize, mapOffsetX, mapOffsetY)
-            val path = createHexPath(center, hexSize)
-            
-            // Get fill color based on state
-            val fillColor = getTileColor(tile)
-            
-            // Draw hex fill
-            drawPath(
-                path = path,
-                color = fillColor,
-            )
-            
-            // Draw explorable tile indicator (pulsing green border)
-            if (coord in explorableTiles) {
-                drawPath(
-                    path = path,
-                    color = Color(0xFF00FF00).copy(alpha = pulseAlpha),
-                    style = Stroke(width = pulseWidth)
-                )
-                // Draw "explore" hint
-                drawCircle(
-                    color = Color(0xFF00FF00).copy(alpha = pulseAlpha * 0.3f),
-                    radius = hexSize * 0.8f,
-                    center = center
-                )
-            }
-            
-            // Draw buildable tile indicator (blue glow)
-            if (coord in buildableTiles && coord !in explorableTiles) {
-                drawPath(
-                    path = path,
-                    color = Color(0xFF2196F3).copy(alpha = 0.8f),
-                    style = Stroke(width = 4f)
-                )
-                drawCircle(
-                    color = Color(0xFF2196F3).copy(alpha = 0.2f),
-                    radius = hexSize * 0.7f,
-                    center = center
-                )
-            }
-            
-            // Draw selection highlight (on top of other indicators)
-            if (coord == selectedTile) {
-                drawPath(
-                    path = path,
-                    color = Color(0xFFFFD700),
-                    style = Stroke(width = 6f)
-                )
-            }
-            
-            // Draw zone border (different colors per zone) - only if not highlighted
-            if (coord != selectedTile && coord !in explorableTiles && coord !in buildableTiles) {
-                val borderColor = when (tile.zone) {
-                    Zone.SURFACE -> Color(0xFF4CAF50)
-                    Zone.CRUST -> Color(0xFF8BC34A)
-                    Zone.MANTLE -> Color(0xFFFF9800)
-                    Zone.CORE -> Color(0xFFF44336)
-                }
-                drawPath(
-                    path = path,
-                    color = borderColor,
-                    style = Stroke(width = 2f)
-                )
-            }
-            
-            // Draw tile content if revealed
-            if (tile.isRevealed) {
-                drawTileContent(
-                    center = center,
-                    tile = tile,
-                    hexSize = hexSize,
-                    terrainBitmaps = terrainBitmaps,
-                    terrainLabelPaint = terrainLabelPaint,
-                    numberTextPaint = numberTextPaint,
-                    rubblePaint = rubblePaint
-                )
-            } else {
-                // Draw fog/unknown indicator
-                drawCircle(
-                    color = Color.DarkGray.copy(alpha = 0.5f),
-                    radius = hexSize * 0.3f,
-                    center = center
-                )
-                // Show risk indicator for explorable tiles, "?" for others
-                if (coord in explorableTiles) {
-                    val badge = badgeBitmaps[tile.zone]
-                    if (badge != null) {
-                        drawContext.canvas.nativeCanvas.drawBitmap(
-                            badge,
-                            center.x - badge.width / 2f,
-                            center.y - badge.height / 2f,
-                            null
+    // ---- Zoom + pan state (session-only; not persisted) ----
+    var scale by remember { mutableStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { canvasSize = it }
+                // Pinch + drag handler. Placed BEFORE graphicsLayer so it
+                // receives events in the layer's outer (untransformed) coords.
+                .pointerInput(Unit) {
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        val oldScale = scale
+                        val newScale = clampScale(oldScale * zoom)
+                        val w = size.width.toFloat()
+                        val h = size.height.toFloat()
+                        val cx = w / 2f
+                        val cy = h / 2f
+                        // Keep the canvas-local point under the pinch focal pinned to the same screen pixel.
+                        val focalLocalX = (centroid.x - cx - offset.x) / oldScale + cx
+                        val focalLocalY = (centroid.y - cy - offset.y) / oldScale + cy
+                        val newOffset = Offset(
+                            x = centroid.x - cx - (focalLocalX - cx) * newScale + pan.x,
+                            y = centroid.y - cy - (focalLocalY - cy) * newScale + pan.y
                         )
+                        scale = newScale
+                        offset = clampOffset(newOffset, newScale, IntSize(size.width, size.height))
                     }
-                } else {
-                    fogLabelPaint.color = android.graphics.Color.GRAY
-                    fogLabelPaint.textSize = 24f
-                    drawContext.canvas.nativeCanvas.drawText(
-                        "?",
-                        center.x,
-                        center.y + 8f,
-                        fogLabelPaint
+                }
+                // Tap handler (must invert the visual transform to find the hex the user actually touched).
+                .pointerInput(Unit) {
+                    detectTapGestures { tap ->
+                        val w = size.width.toFloat()
+                        val h = size.height.toFloat()
+                        val local = screenToCanvasLocal(tap, scale, offset, IntSize(size.width, size.height))
+                        val mapOffsetX = w / 2f
+                        val mapOffsetY = h / 2f - 50f
+                        val clickedHex = pixelToHex(local, hexSize, mapOffsetX, mapOffsetY)
+                        onTileClick(clickedHex)
+                    }
+                }
+                // Render with the live, un-animated state so what the user sees
+                // always matches the transform used by gesture math + tap inversion.
+                // Button-driven changes (+/-/recenter) will snap rather than animate
+                // — we accepted that trade-off for hit-testing correctness.
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offset.x,
+                    translationY = offset.y,
+                    transformOrigin = TransformOrigin.Center
+                )
+        ) {
+            // Center the map dynamically based on canvas size
+            val mapOffsetX = size.width / 2f
+            val mapOffsetY = size.height / 2f - 50f
+            
+            // Draw all hex tiles
+            board.forEach { (coord, tile) ->
+                val center = hexToPixel(coord, hexSize, mapOffsetX, mapOffsetY)
+                val path = createHexPath(center, hexSize)
+                
+                // Get fill color based on state
+                val fillColor = getTileColor(tile)
+                
+                // Draw hex fill
+                drawPath(
+                    path = path,
+                    color = fillColor,
+                )
+                
+                // Draw explorable tile indicator (pulsing green border)
+                if (coord in explorableTiles) {
+                    drawPath(
+                        path = path,
+                        color = Color(0xFF00FF00).copy(alpha = pulseAlpha),
+                        style = Stroke(width = pulseWidth)
+                    )
+                    // Draw "explore" hint
+                    drawCircle(
+                        color = Color(0xFF00FF00).copy(alpha = pulseAlpha * 0.3f),
+                        radius = hexSize * 0.8f,
+                        center = center
                     )
                 }
+                
+                // Draw buildable tile indicator (blue glow)
+                if (coord in buildableTiles && coord !in explorableTiles) {
+                    drawPath(
+                        path = path,
+                        color = Color(0xFF2196F3).copy(alpha = 0.8f),
+                        style = Stroke(width = 4f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF2196F3).copy(alpha = 0.2f),
+                        radius = hexSize * 0.7f,
+                        center = center
+                    )
+                }
+                
+                // Draw selection highlight (on top of other indicators)
+                if (coord == selectedTile) {
+                    drawPath(
+                        path = path,
+                        color = Color(0xFFFFD700),
+                        style = Stroke(width = 6f)
+                    )
+                }
+                
+                // Draw zone border (different colors per zone) - only if not highlighted
+                if (coord != selectedTile && coord !in explorableTiles && coord !in buildableTiles) {
+                    val borderColor = when (tile.zone) {
+                        Zone.SURFACE -> Color(0xFF4CAF50)
+                        Zone.CRUST -> Color(0xFF8BC34A)
+                        Zone.MANTLE -> Color(0xFFFF9800)
+                        Zone.CORE -> Color(0xFFF44336)
+                    }
+                    drawPath(
+                        path = path,
+                        color = borderColor,
+                        style = Stroke(width = 2f)
+                    )
+                }
+                
+                // Draw tile content if revealed
+                if (tile.isRevealed) {
+                    drawTileContent(
+                        center = center,
+                        tile = tile,
+                        hexSize = hexSize,
+                        terrainBitmaps = terrainBitmaps,
+                        terrainLabelPaint = terrainLabelPaint,
+                        numberTextPaint = numberTextPaint,
+                        rubblePaint = rubblePaint
+                    )
+                } else {
+                    // Draw fog/unknown indicator
+                    drawCircle(
+                        color = Color.DarkGray.copy(alpha = 0.5f),
+                        radius = hexSize * 0.3f,
+                        center = center
+                    )
+                    // Show risk indicator for explorable tiles, "?" for others
+                    if (coord in explorableTiles) {
+                        val badge = badgeBitmaps[tile.zone]
+                        if (badge != null) {
+                            drawContext.canvas.nativeCanvas.drawBitmap(
+                                badge,
+                                center.x - badge.width / 2f,
+                                center.y - badge.height / 2f,
+                                null
+                            )
+                        }
+                    } else {
+                        fogLabelPaint.color = android.graphics.Color.GRAY
+                        fogLabelPaint.textSize = 24f
+                        drawContext.canvas.nativeCanvas.drawText(
+                            "?",
+                            center.x,
+                            center.y + 8f,
+                            fogLabelPaint
+                        )
+                    }
+                }
+            }
+            
+            // Draw structures on top
+            structures.forEach { structure ->
+                val center = hexToPixel(structure.location, hexSize, mapOffsetX, mapOffsetY)
+                drawStructure(center, structure, hexSize, structureBitmaps, structureLabelPaint)
             }
         }
-        
-        // Draw structures on top
-        structures.forEach { structure ->
-            val center = hexToPixel(structure.location, hexSize, mapOffsetX, mapOffsetY)
-            drawStructure(center, structure, hexSize, structureBitmaps, structureLabelPaint)
-        }
+
+        // Floating zoom controls (a11y alternative to pinch).
+        ZoomControls(
+            onZoomIn = {
+                val newScale = clampScale(scale * 1.25f)
+                scale = newScale
+                offset = clampOffset(offset, newScale, canvasSize)
+            },
+            onZoomOut = {
+                val newScale = clampScale(scale * 0.8f)
+                scale = newScale
+                offset = clampOffset(offset, newScale, canvasSize)
+            },
+            onRecenter = {
+                scale = 1f
+                offset = Offset.Zero
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 12.dp)
+        )
+    }
+}
+
+// ---- Pure helpers (testable, no Compose runtime) ----
+
+/** Clamp [scale] to the supported zoom range. */
+fun clampScale(scale: Float): Float = scale.coerceIn(HEX_MAP_MIN_SCALE, HEX_MAP_MAX_SCALE)
+
+/**
+ * Inner pan-clamp logic, expressed in primitives so it can be unit-tested
+ * without depending on Compose's Offset/IntSize types. See [clampOffset] for
+ * the rule (≥25% of the viewport must show board content).
+ */
+fun clampOffsetXY(
+    offsetX: Float,
+    offsetY: Float,
+    scale: Float,
+    canvasWidth: Int,
+    canvasHeight: Int
+): Pair<Float, Float> {
+    if (canvasWidth <= 0 || canvasHeight <= 0) return offsetX to offsetY
+    val w = canvasWidth.toFloat()
+    val h = canvasHeight.toFloat()
+    val maxX = w * (0.25f + scale / 2f)
+    val maxY = h * (0.25f + scale / 2f)
+    return offsetX.coerceIn(-maxX, maxX) to offsetY.coerceIn(-maxY, maxY)
+}
+
+/**
+ * Inner inverse-transform logic, expressed in primitives. See
+ * [screenToCanvasLocal] for the geometry.
+ */
+fun screenToCanvasLocalXY(
+    screenX: Float,
+    screenY: Float,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float,
+    canvasWidth: Int,
+    canvasHeight: Int
+): Pair<Float, Float> {
+    if (scale == 0f) return screenX to screenY
+    val cx = canvasWidth / 2f
+    val cy = canvasHeight / 2f
+    return ((screenX - cx - offsetX) / scale + cx) to
+            ((screenY - cy - offsetY) / scale + cy)
+}
+
+/**
+ * Clamp pan [offset] so that at least 25% of the canvas viewport keeps showing
+ * board content. With center transform origin and scale [scale], the transformed
+ * content fills [(W/2)(1-s)+tx, (W/2)(1+s)+tx] horizontally; similarly vertically.
+ * Requiring overlap >= 25% of the viewport gives bounds:
+ *   |tx| <= W * (0.25 + s/2)
+ *   |ty| <= H * (0.25 + s/2)
+ */
+fun clampOffset(offset: Offset, scale: Float, canvasSize: IntSize): Offset {
+    val (x, y) = clampOffsetXY(offset.x, offset.y, scale, canvasSize.width, canvasSize.height)
+    return Offset(x, y)
+}
+
+/**
+ * Inverse of the graphicsLayer transform applied to the HexMap canvas. Takes a
+ * point in the canvas's outer (untransformed) coordinate system — which is what
+ * pointerInput handlers receive — and returns the corresponding point in the
+ * canvas's local drawing coordinate system, which is what hexToPixel/pixelToHex
+ * operate on.
+ */
+fun screenToCanvasLocal(screen: Offset, scale: Float, offset: Offset, canvasSize: IntSize): Offset {
+    val (x, y) = screenToCanvasLocalXY(
+        screen.x, screen.y, scale, offset.x, offset.y, canvasSize.width, canvasSize.height
+    )
+    return Offset(x, y)
+}
+
+@Composable
+private fun ZoomControls(
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onRecenter: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.End
+    ) {
+        ZoomButton(label = "+", description = "Zoom in", onClick = onZoomIn)
+        ZoomButton(label = "−", description = "Zoom out", onClick = onZoomOut)
+        ZoomButton(label = "⊙", description = "Recenter board", onClick = onRecenter)
+    }
+}
+
+@Composable
+private fun ZoomButton(label: String, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .background(Color(0xCC111827), CircleShape)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            color = Color(0xFF29B6F6),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
