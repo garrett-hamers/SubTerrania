@@ -48,23 +48,28 @@ KEY FEATURES
 • Multiple map presets that change the shape of the underworld and the path to victory.
 • Resource production driven by dice rolls — high variance, high tension, but always tactical: every build, every trade, and every ability lets you bend the odds.
 • Build structures that unlock new options: light up dark tiles, boost production, and open trade ratios.
+• Pinch-to-zoom and drag-to-pan the hex board, with floating zoom controls. Number tokens stay readable at any level.
+• A one-line event ticker at the bottom of the screen shows the latest action; tap it to see the full game log.
+• End-of-game options: replay the same seed, jump to the next difficulty, or pick a new map without going back to the main menu.
+• First-run coachmark tutorial walks brand-new players through dice triggers, zone risk badges, and the action budget.
 • Auto-save and Resume. Force-stop, lock your screen, take a phone call — your game is exactly where you left it when you come back.
 • Achievements that reward both first-timers and long-haul players.
 
 FAIR-PLAY PROMISE
 
-• 100% offline — no internet connection required, ever.
+• 100% offline gameplay — every game is fully playable in airplane mode.
 • No ads. No paywalls. No in-app purchases. No "premium" currencies.
-• No tracking. No analytics. No advertising SDKs. No user accounts.
-• No personal data collected, transmitted, or stored. The only permission requested is VIBRATE for haptic feedback.
-• Plays on a phone in a tunnel, on a flight, or anywhere else with no signal.
+• No advertising SDKs. No user accounts. No social login. No location.
+• Anonymous diagnostic telemetry only — we send crash reports plus difficulty/character/outcome to Azure Application Insights so we can fix bugs and balance the game. No personal information, no game contents, no advertising or third-party-sharing. Full disclosure in our privacy policy.
+• Only two permissions: VIBRATE (haptic feedback) and INTERNET (telemetry only — gameplay never depends on it).
 
 ACCESSIBILITY
 
 • Built for one-handed play on phones.
-• Large-tap targets for the action bar.
+• Large-tap targets for the action bar and pinch-zoom for the board.
 • Respects your system text size and color settings.
 • Haptic feedback can be turned off in your phone's accessibility settings.
+• In-app "Send feedback" link in Settings — please tell us what doesn't work.
 
 WHO IS IT FOR
 
@@ -81,7 +86,7 @@ Source code: https://github.com/garrett-hamers/SubTerrania
 Contact: atlyn.help@gmail.com
 ```
 
-Length: ~2,830 characters, well under the 4,000-char cap.
+Length: ~3,750 characters, under the 4,000-char cap.
 
 ---
 
@@ -111,12 +116,17 @@ Length: ~2,830 characters, well under the 4,000-char cap.
 
 ## Data Safety form answers (cheat sheet)
 
+> **Updated for 1.0.6 (Phase O-3):** the app now sends anonymous diagnostic telemetry to Azure Application Insights. See `docs/privacy-policy.html` for the full disclosure.
+
 | Question | Answer |
 |----------|--------|
-| Does your app collect or share any user data? | **No** |
-| Does your app collect any data types from any of these data categories? | None of them. Tick nothing. |
-| Is all of the user data collected by your app encrypted in transit? | N/A (no data collected). |
-| Do you provide a way for users to request that their data be deleted? | N/A (no data collected). |
+| Does your app collect or share any user data? | **Yes — collects, does not share.** |
+| What user data does your app collect? | **App info and performance** → check `Crash logs`, `Diagnostics`, and `Other app performance data` (we send game lifecycle events: app_start, game_started, game_won, game_lost). Nothing else. |
+| Is the data collected ephemeral? | **No** — it is kept in the Azure workspace for 90 days. |
+| Why is the data collected? | App functionality (debugging crashes), Analytics (understanding which difficulties / characters / maps players use). |
+| Is the data shared with third parties? | **No** — it goes only to Azure Application Insights, which the developer (Atlyn / Garrett Hamers) operates. Microsoft processes the data on the developer's behalf as a sub-processor. |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** — sent over HTTPS to the Azure ingestion endpoint. |
+| Do you provide a way for users to request that their data be deleted? | **No** — we don't store any identifier that could tie events back to a specific user, so there's nothing user-specific to delete. Users can stop the data collection by revoking INTERNET permission or using airplane mode. |
 
 ---
 
@@ -180,4 +190,4 @@ If Play Console asks for per-screenshot captions, suggested copy:
 
 ---
 
-*Last updated: Phase H — listing assets prep.*
+*Last updated: Phase O-1 + O-3 (1.0.6) — added zoom/pan + ticker + tutorial bullets, telemetry disclosure, and tablet-screenshots reminder.*

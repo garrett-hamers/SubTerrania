@@ -8,37 +8,75 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #333; }
         h1 { color: #1a1a2e; }
         h2 { color: #16213e; margin-top: 30px; }
+        h3 { color: #16213e; margin-top: 20px; }
         .date { color: #666; font-style: italic; }
+        .changelog { background: #f7f7fa; border-left: 3px solid #29b6f6; padding: 10px 16px; margin: 20px 0; font-size: 0.92em; }
+        ul.tight li { margin: 2px 0; }
+        code { background: #f0f0f4; padding: 1px 6px; border-radius: 3px; font-size: 0.92em; }
     </style>
 </head>
 <body>
     <h1>Privacy Policy for SubTerrania</h1>
-    <p class="date">Last updated: April 30, 2026</p>
+    <p class="date">Last updated: May 13, 2026</p>
 
     <h2>Overview</h2>
-    <p>SubTerrania is a single-player, offline turn-based strategy game developed by Atlyn. Your privacy is important to us, and this policy explains our practices regarding data collection.</p>
+    <p>SubTerrania is a single-player, offline turn-based strategy game developed by Atlyn (Garrett Hamers). The game itself works fully offline. Starting in version 1.0.6, the app sends a small amount of <strong>anonymous diagnostic and gameplay-outcome telemetry</strong> to Azure Application Insights when an internet connection is available, so we can detect crashes and understand which difficulties / characters / maps are most popular. We never collect personal information.</p>
 
-    <h2>Data Collection</h2>
-    <p><strong>SubTerrania does not collect, store, or transmit any personal data.</strong></p>
-    <ul>
-        <li>The app does not require an internet connection</li>
-        <li>The app does not collect personal information</li>
-        <li>The app does not use analytics or tracking services</li>
-        <li>The app does not use advertising SDKs</li>
-        <li>The app does not access your contacts, location, camera, microphone, or files</li>
+    <h2>What We Collect</h2>
+
+    <h3>Diagnostic telemetry (Azure Application Insights)</h3>
+    <p>When your device has an internet connection, SubTerrania sends the following <strong>non-personal</strong> events to Azure Monitor (operated by Microsoft):</p>
+    <ul class="tight">
+        <li><code>app_start</code> — every time the app launches</li>
+        <li><code>game_started</code> — with the chosen difficulty, character, and map</li>
+        <li><code>game_won</code> / <code>game_lost</code> — with difficulty, character, map, turn number, and victory points earned</li>
+        <li><code>feedback_sent</code> — when you tap "Send feedback" in the in-app settings</li>
+        <li>Uncaught exceptions (crashes) including the stack trace, exception type, and message — but no game contents</li>
+    </ul>
+    <p>Each event also includes the app version (e.g. <code>1.0.6</code>), Android API level (e.g. <code>34</code>), and device model name (e.g. <code>"Pixel 6"</code>). A randomly-generated session-instance ID is included with each batch but is not persisted across launches and cannot be tied to any account or device fingerprint.</p>
+
+    <h3>What we do NOT collect</h3>
+    <ul class="tight">
+        <li>Your name, email, account identifier, or any contact information</li>
+        <li>Your IP address (Azure ingestion logs the connection IP for abuse prevention but we never query or analyse it)</li>
+        <li>Your game-save contents, board layouts, or any free-form text you might type</li>
+        <li>Any persistent device or installation identifier (no advertising ID, no Android ID, no install UUID)</li>
+        <li>Your contacts, location, camera, microphone, files, or browsing history</li>
     </ul>
 
     <h2>Permissions</h2>
-    <p>The app requests only the <strong>VIBRATE</strong> permission, which is used for haptic feedback during gameplay. This permission does not involve any data collection.</p>
+    <p>The app requests only two permissions:</p>
+    <ul class="tight">
+        <li><strong><code>VIBRATE</code></strong> — for haptic feedback during gameplay. No data collection.</li>
+        <li><strong><code>INTERNET</code></strong> — used solely to send the telemetry described above to Azure Application Insights. The app never accepts inbound connections, and gameplay continues to work fully if the network is unavailable (telemetry is silently dropped).</li>
+    </ul>
 
     <h2>Third-Party Services</h2>
-    <p>SubTerrania does not integrate with any third-party services, analytics providers, or advertising networks.</p>
+    <p>SubTerrania uses one third-party service:</p>
+    <ul class="tight">
+        <li><strong>Microsoft Azure Application Insights</strong> — receives the diagnostic telemetry described above. See <a href="https://privacy.microsoft.com/en-us/privacystatement">Microsoft's privacy statement</a> for how Microsoft handles data sent to its services.</li>
+    </ul>
+    <p>The app does not integrate with any analytics SDK, advertising network, social-media SDK, or third-party login provider.</p>
+
+    <h2>Data Retention</h2>
+    <p>Telemetry is retained for 90 days in our Azure workspace and then automatically deleted. Because we don't collect any identifier that ties events back to you, there is no way for us to delete a specific user's data on request — but there is no personal data to delete.</p>
+
+    <h2>Opting Out</h2>
+    <p>To stop the app from sending any telemetry, simply put your device in airplane mode or revoke the app's network access in Android settings. The game itself will continue to work normally; only the diagnostic events will stop. (A future release may add an in-app opt-out toggle.)</p>
 
     <h2>Children's Privacy</h2>
-    <p>While SubTerrania does not target children under 13, the app is safe for users of all ages as it does not collect any data.</p>
+    <p>SubTerrania is rated for all ages and does not target children under 13. We do not knowingly collect personal information from anyone, including children. The diagnostic telemetry described above does not include any data that could identify a child or any specific user.</p>
 
     <h2>Changes to This Policy</h2>
-    <p>If we make changes to this privacy policy, we will update the "Last updated" date at the top of this page.</p>
+    <p>If we make changes, we will update the "Last updated" date and add an entry to the changelog below.</p>
+
+    <div class="changelog">
+        <strong>Changelog</strong>
+        <ul>
+            <li><strong>2026-05-13 (v1.0.6)</strong> — Added Azure Application Insights diagnostic telemetry (anonymous; lifecycle events + crash reports only). Added <code>INTERNET</code> permission. Updated all sections to disclose the change. Game still works fully offline.</li>
+            <li><strong>2026-04-30 (v1.0.0)</strong> — Initial publication.</li>
+        </ul>
+    </div>
 
     <h2>Contact Us</h2>
     <p>If you have questions about this privacy policy, please contact us at: <strong>atlyn.help@gmail.com</strong></p>
