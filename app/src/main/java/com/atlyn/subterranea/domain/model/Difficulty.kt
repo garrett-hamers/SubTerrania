@@ -80,7 +80,11 @@ enum class Difficulty(
             EASY -> 13
             NORMAL -> 15
             HARD -> 19
-            NIGHTMARE -> 18
+            // Phase O-4: Nightmare was 18 — easier than Hard once Phase L
+            // closed the action-budget bugs (240-game K-1 showed Hard 72%
+            // win, Nightmare 80%). Bumping to 22 restores the curve so
+            // Nightmare is genuinely the hardest tier.
+            NIGHTMARE -> 22
         }
     
     /**
@@ -132,10 +136,13 @@ enum class Difficulty(
      */
     val hazardChance: Float
         get() = when (this) {
-            EASY -> 0.1f     // 10% chance of hazards
-            NORMAL -> 0.3f   // 30% chance
-            HARD -> 0.5f     // 50% chance
-            NIGHTMARE -> 0.7f // 70% chance
+            EASY -> 0.1f       // 10% chance of hazards
+            NORMAL -> 0.3f     // 30% chance
+            // Phase O-4: bumped Hard 0.50 -> 0.60 and Nightmare 0.70 -> 0.80
+            // to make exploration genuinely riskier on the higher tiers, and
+            // to reinforce the difficulty ordering after the VP-target bump.
+            HARD -> 0.6f       // 60% chance
+            NIGHTMARE -> 0.8f  // 80% chance
         }
     
     /**

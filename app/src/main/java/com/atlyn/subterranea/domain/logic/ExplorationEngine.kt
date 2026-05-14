@@ -154,7 +154,10 @@ object ExplorationEngine {
 
         when (presetHint) {
             MapPresetHint.HAZARDOUS -> hazardChance = minOf(90, hazardChance + 20)
-            MapPresetHint.CRYSTAL_RICH -> if (roll <= 15 && zone != Zone.SURFACE) return ExplorationEvent.CrystalVein()
+            // Phase O-4: bump CRYSTAL_RICH from 15 -> 30 so Crystal Caves
+            // feels meaningfully Crystal-rich vs. the Standard map (K-1
+            // showed map presets shifted the structure mix by <1 build).
+            MapPresetHint.CRYSTAL_RICH -> if (roll <= 30 && zone != Zone.SURFACE) return ExplorationEvent.CrystalVein()
             MapPresetHint.IRON_RICH -> if (roll <= 10 && zone != Zone.SURFACE) {
                 return ExplorationEvent.TreasureCache(mapOf(Resource.IRON_ORE to 2, Resource.BASALT to 1))
             }

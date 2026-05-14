@@ -1101,7 +1101,7 @@ fun ActionButton(
 
 @Composable
 fun BuildMenu(
-    availableStructures: List<StructureType>,
+    availableStructures: List<Pair<StructureType, Map<Resource, Int>>>,
     player: Player,
     selectedTileName: String? = null,
     onBuild: (StructureType) -> Unit,
@@ -1163,16 +1163,23 @@ fun BuildMenu(
                 )
             }
             
-            // Show all structure types, highlighting which are available
+            // Show all structure types, highlighting which are available.
+            // The cost shown is the *actual* cost (post Phase O-4 Lantern
+            // scaling and difficulty/character adjustment) when the structure
+            // is on the available list; otherwise we fall back to its base
+            // cost so the player still sees a recognisable price tag.
             val allTypes = StructureType.entries.toList()
+            val availableMap = availableStructures.toMap()
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(allTypes) { type ->
-                    val isAvailable = type in availableStructures
-                    val canAfford = player.canAfford(type.cost)
+                    val isAvailable = type in availableMap
+                    val displayCost = availableMap[type] ?: type.cost
+                    val canAfford = player.canAfford(displayCost)
                     StructureCard(
                         structureType = type,
+                        cost = displayCost,
                         player = player,
                         canAfford = canAfford,
                         isAvailable = isAvailable,
@@ -1297,6 +1304,7 @@ fun AbilityMenu(
 @Composable
 fun StructureCard(
     structureType: StructureType,
+    cost: Map<Resource, Int>,
     player: Player,
     canAfford: Boolean,
     isAvailable: Boolean,
@@ -1341,7 +1349,7 @@ fun StructureCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                structureType.cost.forEach { (resource, amount) ->
+                cost.forEach { (resource, amount) ->
                     val have = player.getResourceCount(resource)
                     val enough = have >= amount
                     Row(
@@ -1366,7 +1374,7 @@ fun StructureCard(
             
             // Show what's missing if can't afford
             if (!canAfford) {
-                val missing = structureType.cost.mapNotNull { (resource, needed) ->
+                val missing = cost.mapNotNull { (resource, needed) ->
                     val have = player.getResourceCount(resource)
                     if (have < needed) "Need ${needed - have} more ${resource.displayName()}" else null
                 }

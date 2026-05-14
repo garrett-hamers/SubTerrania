@@ -32,7 +32,7 @@ object StructureEngine {
             return state.addEvent("❌ Lantern would light no new area. Place near unlit or unrevealed tiles.")
         }
 
-        val adjustedCost = getAdjustedBuildCost(structureType, state.difficulty, state.selectedCharacter)
+        val adjustedCost = getActualBuildCost(state, structureType)
         if (!player.canAfford(adjustedCost)) {
             return state.addEvent("❌ Cannot afford ${structureType.displayName}")
         }
@@ -88,12 +88,51 @@ object StructureEngine {
         }.filter { it.value > 0 }
     }
 
+    /**
+     * Phase O-4: Lantern Spam Convergence v2.
+     *
+     * After Phase L hid 0-utility Lanterns, the K-1 240-game playtest still
+     * showed Lantern as the dominant build for every character on every map
+     * (Engineer averaged 4.2-4.3 Lanterns per game). To break that
+     * convergence without removing the structure, the cost ramps with how
+     * many Lanterns the player has already built:
+     *
+     *   1st Lantern: base cost (1 Crystal + 1 Iron) — unchanged.
+     *   2nd Lantern: base + 1 Crystal (= 2 Crystal + 1 Iron).
+     *   3rd+ Lantern: base + 1 Crystal + 1 Iron (= 2 Crystal + 2 Iron).
+     *
+     * Difficulty + character adjustments still stack (i.e. the rare-resource
+     * discount is applied AFTER the scaling). Other structures are
+     * unaffected.
+     */
+    fun getActualBuildCost(
+        state: GameState,
+        structureType: StructureType,
+        playerId: Int = state.currentPlayer.id
+    ): Map<Resource, Int> {
+        val baseAdjusted = getAdjustedBuildCost(structureType, state.difficulty, state.selectedCharacter)
+        if (structureType != StructureType.LANTERN) return baseAdjusted
+
+        val owned = state.structures.count {
+            it.type == StructureType.LANTERN && it.ownerId == playerId
+        }
+        // Surcharge stacks ON TOP of the difficulty/character-adjusted base.
+        val surcharge = mutableMapOf<Resource, Int>()
+        if (owned >= 1) surcharge[Resource.CRYSTAL] = (surcharge[Resource.CRYSTAL] ?: 0) + 1
+        if (owned >= 2) surcharge[Resource.IRON_ORE] = (surcharge[Resource.IRON_ORE] ?: 0) + 1
+        if (surcharge.isEmpty()) return baseAdjusted
+
+        return (baseAdjusted.keys + surcharge.keys).associateWith { res ->
+            (baseAdjusted[res] ?: 0) + (surcharge[res] ?: 0)
+        }.filter { it.value > 0 }
+    }
+
     fun getBuildableStructures(state: GameState): Map<StructureType, List<HexCoordinate>> {
         val player = state.currentPlayer
         val result = mutableMapOf<StructureType, MutableList<HexCoordinate>>()
 
         StructureType.entries.forEach { type ->
-            val adjustedCost = getAdjustedBuildCost(type, state.difficulty, state.selectedCharacter)
+            val adjustedCost = getActualBuildCost(state, type)
             if (player.canAfford(adjustedCost)) {
                 result[type] = mutableListOf()
 
@@ -219,8 +258,18 @@ object StructureEngine {
             }
 
             StructureAbility.SPORE_BURST -> {
-                player = player.addResource(Resource.MYCELIUM, 2)
-                newState = newState.addEvent("🍄 Spore Burst! +2 Mycelium")
+                // Phase O-4: Spore Burst yields more on Fungal Jungle so
+                // building a Fungal Farm there meaningfully rewards the
+                // map choice (K-1 showed map presets weren't differentiated).
+                val mycBonus = if (state.mapPreset == MapPreset.FUNGAL_JUNGLE) 3 else 2
+                val lichenBonus = if (state.mapPreset == MapPreset.FUNGAL_JUNGLE) 1 else 0
+                player = player.addResource(Resource.MYCELIUM, mycBonus)
+                if (lichenBonus > 0) player = player.addResource(Resource.LICHEN, lichenBonus)
+                val msg = if (state.mapPreset == MapPreset.FUNGAL_JUNGLE)
+                    "🍄 Spore Burst! +$mycBonus Mycelium, +$lichenBonus Lichen (Jungle bonus)"
+                else
+                    "🍄 Spore Burst! +$mycBonus Mycelium"
+                newState = newState.addEvent(msg)
             }
         }
 

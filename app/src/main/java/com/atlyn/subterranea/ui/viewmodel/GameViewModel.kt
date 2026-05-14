@@ -968,7 +968,13 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(lastExplorationEvent = null) }
     }
     
-    fun getAvailableStructures(): List<StructureType> {
+    /**
+     * Returns the list of structures the player can build on the currently
+     * selected tile, paired with their **actual** cost (post Phase O-4 Lantern
+     * scaling, post difficulty/character adjustment). Empty if no tile is
+     * selected or the tile cannot host any structure.
+     */
+    fun getAvailableStructures(): List<Pair<StructureType, Map<Resource, Int>>> {
         val state = _uiState.value
         val player = state.currentPlayer
         val location = _gameUIState.value.selectedTile
@@ -990,8 +996,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         val existingStructure = state.getStructureAt(location)
         Log.d(TAG, "Existing structure: $existingStructure")
         
-        val available = StructureType.entries.filter { type ->
-            val adjustedCost = GameEngine.getAdjustedBuildCost(type, state.difficulty, state.selectedCharacter)
+        val available = StructureType.entries.mapNotNull { type ->
+            val adjustedCost = StructureEngine.getActualBuildCost(state, type)
             val canAfford = player.canAfford(adjustedCost)
             val canPlace = when {
                 type == StructureType.EXCAVATOR -> existingStructure?.type == StructureType.OUTPOST
@@ -999,8 +1005,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                 type == StructureType.LANTERN -> StructureEngine.lanternHasUtility(state, location)
                 else -> true
             }
-            Log.d(TAG, "  $type: canAfford=$canAfford, canPlace=$canPlace")
-            canAfford && canPlace
+            Log.d(TAG, "  $type: canAfford=$canAfford, canPlace=$canPlace, cost=$adjustedCost")
+            if (canAfford && canPlace) type to adjustedCost else null
         }
         Log.d(TAG, "Available structures: $available")
         return available
