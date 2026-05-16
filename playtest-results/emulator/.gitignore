@@ -1,0 +1,8 @@
+# Per-game raw artifacts kept locally only
+screenshots/
+dumps/
+summaries/
+state.json
+*.log
+*.log.err
+
