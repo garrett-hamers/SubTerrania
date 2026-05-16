@@ -366,9 +366,12 @@ def mark_orphans():
     return orphans
 
 def per_difficulty_counts():
+    """Count games per difficulty for the round-robin scheduler.
+    Counts ANY terminal outcome (WIN/LOSS/ABORTED_*/CRASHED) so the scheduler
+    advances even if the bot keeps aborting at one difficulty."""
     conn = db_connect()
     rows = conn.execute(
-        "SELECT difficulty, COUNT(*) FROM runs WHERE outcome IN ('WIN','LOSS') GROUP BY difficulty"
+        "SELECT difficulty, COUNT(*) FROM runs WHERE outcome IS NOT NULL GROUP BY difficulty"
     ).fetchall()
     conn.close()
     counts = {d: 0 for d in DIFFICULTIES}
