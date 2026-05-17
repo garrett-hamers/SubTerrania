@@ -952,20 +952,41 @@ fun ActionButtons(
                 )
             }
 
-            // Build button
-            val canBuild = uiState.turnPhase == TurnPhase.MAIN_ACTION && !uiState.gameOver &&
-                selectedTile != null &&
-                uiState.actionsThisTurn < uiState.maxActionsPerTurn
-            
-            val buildColor = if (canBuild && !hasAvailableStructures) Color(0xFFEF5350) else Color(0xFF00ACC1)
-            val buildText = "Build"
+            // Build button — Phase Q-1.2: disabled when nothing is affordable
+            // on the selected tile (eliminates the "open empty picker" anti-pattern).
+            val canBuild = canBuildAction(
+                turnPhase = uiState.turnPhase,
+                gameOver = uiState.gameOver,
+                selectedTile = selectedTile,
+                actionsThisTurn = uiState.actionsThisTurn,
+                maxActionsPerTurn = uiState.maxActionsPerTurn,
+                hasAvailableStructures = hasAvailableStructures
+            )
+            val tileIsBuildContext = isBuildContext(
+                turnPhase = uiState.turnPhase,
+                gameOver = uiState.gameOver,
+                selectedTile = selectedTile,
+                actionsThisTurn = uiState.actionsThisTurn,
+                maxActionsPerTurn = uiState.maxActionsPerTurn
+            )
+
+            val buildColor = when {
+                canBuild -> Color(0xFF00ACC1)            // primary cyan — go
+                tileIsBuildContext -> Color(0xFF607D8B)  // muted blue-grey — selected but unaffordable
+                else -> Color(0xFFB0BEC5)                // standard disabled
+            }
+            val buildContentDescription = when {
+                canBuild -> "Build a structure on the selected tile"
+                tileIsBuildContext -> "Build disabled — no structures affordable on selected tile"
+                else -> "Build a structure on the selected tile, disabled"
+            }
 
             ActionButton(
-                text = buildText,
+                text = "Build",
                 enabled = canBuild,
                 onClick = onBuildClick,
                 color = buildColor,
-                contentDescription = "Build a structure on the selected tile"
+                contentDescription = buildContentDescription
             )
             
             // Clear rubble button

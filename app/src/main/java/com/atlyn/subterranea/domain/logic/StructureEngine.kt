@@ -54,13 +54,13 @@ object StructureEngine {
 
         if (newPlayer.structuresBuilt.map { it.type }.toSet().size >= 5 && Achievement.MASTER_BUILDER !in newPlayer.achievements) {
             newPlayer = newPlayer.copy(achievements = newPlayer.achievements + Achievement.MASTER_BUILDER)
-            newState = newState.addEvent("🏆 Achievement: Master Builder!")
+            newState = newState.addEvent("🎯 Milestone: 5 distinct structures built! +2 VP")
         }
 
         val lanternCount = newPlayer.structuresBuilt.count { it.type == StructureType.LANTERN }
         if (lanternCount >= 3 && Achievement.ILLUMINATOR !in newPlayer.achievements) {
             newPlayer = newPlayer.copy(achievements = newPlayer.achievements + Achievement.ILLUMINATOR)
-            newState = newState.addEvent("🏆 Achievement: The Illuminator!")
+            newState = newState.addEvent("🎯 Milestone: 3 Lanterns built! +1 VP")
         }
 
         if (structureType == StructureType.LANTERN) {

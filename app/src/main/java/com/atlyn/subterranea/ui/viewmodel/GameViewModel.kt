@@ -426,7 +426,20 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
         val resourcesBefore = state.currentPlayer.resources
-        
+
+        // Phase Q-1.1: capture lifetime-achievement diff BEFORE updating meta-progression
+        // so we can fire one-time "🏆 Achievement Unlocked" events for newly-earned milestones.
+        val priorLifetime = _metaProgression.value.lifetimeAchievements
+        val newlyUnlocked = player.achievements - priorLifetime
+        if (newlyUnlocked.isNotEmpty()) {
+            _uiState.update { st ->
+                val newEvents = newlyUnlocked.map { ach ->
+                    "🏆 Achievement Unlocked: ${ach.displayName} — ${ach.description}"
+                }
+                st.copy(eventLog = st.eventLog + newEvents)
+            }
+        }
+
         _metaProgression.update { current ->
             var updated = current.recordGameEnd(won, vpEarned, player.achievements)
             

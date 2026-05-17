@@ -121,7 +121,7 @@ object GameEngine {
 
         if (player.getResourceCount(Resource.CRYSTAL) >= 10 && Achievement.CRYSTAL_BARON !in player.achievements) {
             player = player.copy(achievements = player.achievements + Achievement.CRYSTAL_BARON)
-            newState = newState.addEvent("🏆 Achievement: Crystal Baron!")
+            newState = newState.addEvent("🎯 Milestone: 10 Crystals collected! +2 VP")
         }
 
         val result = checkVictory(newState.copy(lastProduction = productionTotals).updatePlayer(player))

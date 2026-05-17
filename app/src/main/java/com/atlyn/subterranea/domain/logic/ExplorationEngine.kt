@@ -49,7 +49,7 @@ object ExplorationEngine {
             val anyoneHasIt = newState.players.any { Achievement.FIRST_EXPLORER in it.achievements }
             if (!anyoneHasIt) {
                 player = player.copy(achievements = player.achievements + Achievement.FIRST_EXPLORER)
-                newState = newState.addEvent("🏆 Achievement: First Explorer!")
+                newState = newState.addEvent("🎯 Milestone: First into the Mantle! +1 VP")
             }
         }
 
@@ -57,13 +57,13 @@ object ExplorationEngine {
             val anyoneHasIt = newState.players.any { Achievement.CORE_SEEKER in it.achievements }
             if (!anyoneHasIt) {
                 player = player.copy(achievements = player.achievements + Achievement.CORE_SEEKER)
-                newState = newState.addEvent("🏆 Achievement: Core Seeker!")
+                newState = newState.addEvent("🎯 Milestone: Reached the Core! +2 VP")
             }
         }
 
         if (player.explorationCount >= 10 && Achievement.DEEP_DELVER !in player.achievements) {
             player = player.copy(achievements = player.achievements + Achievement.DEEP_DELVER)
-            newState = newState.addEvent("🏆 Achievement: Deep Delver!")
+            newState = newState.addEvent("🎯 Milestone: 10 tiles revealed! +1 VP")
         }
 
         newState = newState.updatePlayer(player)

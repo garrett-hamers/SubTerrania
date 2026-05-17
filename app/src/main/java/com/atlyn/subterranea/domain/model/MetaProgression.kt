@@ -68,6 +68,16 @@ data class MetaProgression(
             lifetimeAchievements = lifetimeAchievements + achievements
         )
     }
+
+    /**
+     * Phase Q-1.1: returns the subset of `earned` achievements that are not yet
+     * in `lifetimeAchievements`. The caller (GameViewModel.recordGameEnd) uses
+     * this to fire a one-time "🏆 Achievement Unlocked" event for each
+     * brand-new lifetime milestone. Per-game "🎯 Milestone" events still fire
+     * every time the milestone is earned in a given game.
+     */
+    fun computeNewlyUnlockedAchievements(earned: Set<Achievement>): Set<Achievement> =
+        earned - lifetimeAchievements
 }
 
 /**
